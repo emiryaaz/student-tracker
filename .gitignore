@@ -5,3 +5,4 @@ db.sqlite3
 .vscode/
 .idea/
 postgres_data/
+frontend-web/node_modules/
