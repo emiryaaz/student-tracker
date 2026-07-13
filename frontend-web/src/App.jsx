@@ -1,14 +1,19 @@
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';
+
+const Dashboard = () => <div className="p-8 text-2xl">Dashboard (Yapım Aşamasında)</div>;
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center">
-      <h1 className="text-4xl font-bold text-blue-600 mb-4">
-        Student Tracker'a Hoş Geldin!
-      </h1>
-      <p className="text-gray-700 text-lg">
-        Tailwind CSS ve React tıkır tıkır çalışıyor. 🚀
-      </p>
-    </div>
-  )
+    <Router>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;
