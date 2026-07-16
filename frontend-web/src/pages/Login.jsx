@@ -1,25 +1,39 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { AuthContext } from '../context/AuthContext';
 
 export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    
+    // AuthContext'ten login fonksiyonunu çekiyoruz
+    const { login } = useContext(AuthContext); 
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
         try {
-            const response = await api.post('/token/', { email, password });
+            // 1. Adım: E-posta ve şifre ile token al
+            const tokenResponse = await api.post('/token/', { email, password });
+            const accessToken = tokenResponse.data.access;
             
-            localStorage.setItem('access', response.data.access);
-            localStorage.setItem('refresh', response.data.refresh);
+            // 2. Adım: Geçici olarak bu istek için header'a token'ı ekle
+            api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
             
+            // 3. Adım: Kullanıcının profil bilgilerini ve rolünü çek
+            const profileResponse = await api.get('/accounts/profiles/me/');
+            
+            // 4. Adım: Hem kullanıcı verisini hem de token'ı Context'e kaydet
+            login(profileResponse.data, accessToken);
+            
+            // Başarılı girişten sonra Dashboard'a yönlendir
             navigate('/dashboard');
         } catch (err) {
             setError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+            console.error(err);
         }
     };
 

@@ -1,15 +1,41 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
-from .models import User, TeacherProfile, ParentProfile, StudentProfile
+from django.contrib.auth.forms import UserCreationForm, UserChangeForm
+from .models import User
 
-# Özel kullanıcı modelimiz için temel görünüm ayarları
+class CustomUserCreationForm(UserCreationForm):
+    class Meta:
+        model = User
+        fields = ('email', 'first_name', 'last_name', 'role')
+
+class CustomUserChangeForm(UserChangeForm):
+    class Meta:
+        model = User
+        fields = ('email', 'first_name', 'last_name', 'role')
+
 class CustomUserAdmin(UserAdmin):
+    add_form = CustomUserCreationForm
+    form = CustomUserChangeForm
     model = User
-    list_display = ['email', 'role', 'is_staff', 'is_active']
-    ordering = ['email']
-    # Şifre değiştirme veya ek alanlar için fieldsets eklenebilir ancak şimdilik basit tutuyoruz
+    
+    # Listede görünecek sütunlar
+    list_display = ('email', 'first_name', 'last_name', 'role', 'is_staff')
+    ordering = ('email',)
+    
+    # Mevcut kullanıcıyı düzenleme ekranı (Mavi butonla girilen yer)
+    fieldsets = (
+        (None, {'fields': ('email', 'password')}),
+        ('Kişisel Bilgiler', {'fields': ('first_name', 'last_name', 'role')}),
+        ('Yetkiler', {'fields': ('is_active', 'is_staff', 'is_superuser')}),
+    )
+    
+    # YENİ KULLANICI EKLEME EKRANI (Sorunu çözen kısım)
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            # Şifre doğrulama kutularını (password1 ve password2) arayüze ekliyoruz
+            'fields': ('email', 'first_name', 'last_name', 'role', 'password1', 'password2'),
+        }),
+    )
 
 admin.site.register(User, CustomUserAdmin)
-admin.site.register(TeacherProfile)
-admin.site.register(ParentProfile)
-admin.site.register(StudentProfile)

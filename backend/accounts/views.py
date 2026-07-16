@@ -22,13 +22,13 @@ class ProfileViewSet(viewsets.ViewSet):
         user = request.user
         
         if user.role == 'TEACHER':
-            profile = TeacherProfile.objects.get(user=user)
+            profile = TeacherProfile.objects.get_or_create(user=user)[0]
             serializer = TeacherProfileSerializer(profile)
         elif user.role == 'STUDENT':
-            profile = StudentProfile.objects.get(user=user)
+            profile = StudentProfile.objects.get_or_create(user=user)[0]
             serializer = StudentProfileSerializer(profile)
         elif user.role == 'PARENT':
-            profile = ParentProfile.objects.get(user=user)
+            profile = ParentProfile.objects.get_or_create(user=user)[0]
             serializer = ParentProfileSerializer(profile)
         else:
             serializer = UserSerializer(user)
