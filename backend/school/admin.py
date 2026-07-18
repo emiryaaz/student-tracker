@@ -1,14 +1,13 @@
 from django.contrib import admin
-from .models import Classroom, Course
+from .models import Subject, TutoringRelation
 
-class ClassroomAdmin(admin.ModelAdmin):
-    list_display = ('name', 'advisor_teacher')
-    # Öğrenci seçme (Çoka Çok ilişki) kutusunu görsel olarak güzelleştirir
-    filter_horizontal = ('students',) 
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ('name', 'grade_level')
+    list_filter = ('grade_level',)
 
-class CourseAdmin(admin.ModelAdmin):
-    list_display = ('name', 'teacher', 'classroom')
-    list_filter = ('classroom', 'teacher')
-
-admin.site.register(Classroom, ClassroomAdmin)
-admin.site.register(Course, CourseAdmin)
+@admin.register(TutoringRelation)
+class TutoringRelationAdmin(admin.ModelAdmin):
+    list_display = ('tutor', 'student', 'subject', 'is_active', 'started_at')
+    list_filter = ('is_active', 'subject')
+    search_fields = ('tutor__user__first_name', 'student__user__first_name')
