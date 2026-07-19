@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subject, TutoringRelation
+from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource
 from accounts.models import StudentProfile
 
 # Dersi ve sınıf seviyesini paketler
@@ -26,3 +26,18 @@ class TutoringRelationSerializer(serializers.ModelSerializer):
     class Meta:
         model = TutoringRelation
         fields = ['id', 'student', 'subject', 'is_active', 'started_at']
+
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+
+class ExamResultSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ExamResult
+        fields = '__all__'
+
+class ResourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resource
+        fields = '__all__'

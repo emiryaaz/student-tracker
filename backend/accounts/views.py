@@ -1,14 +1,22 @@
-from rest_framework import viewsets, status
-from rest_framework.permissions import IsAuthenticated
+from rest_framework import viewsets, status, generics
+from rest_framework.permissions import IsAuthenticated, AllowAny 
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import User, TeacherProfile, StudentProfile, ParentProfile
 from .serializers import (
     UserSerializer, TeacherProfileSerializer, 
-    StudentProfileSerializer, ParentProfileSerializer
+    StudentProfileSerializer, ParentProfileSerializer,
+    RegisterSerializer # YENİ EKLENDİ
 )
 
+# --- YENİ EKLENEN KAYIT (REGISTER) UÇ NOKTASI ---
+class RegisterView(generics.CreateAPIView):
+    queryset = User.objects.all()
+    permission_classes = [AllowAny] # Token istemez, herkes erişebilir
+    serializer_class = RegisterSerializer
+
+# --- MEVCUT KODLARIN (HİÇ DOKUNULMADI) ---
 class ProfileViewSet(viewsets.ViewSet):
     """
     Kullanıcıların kendi profil bilgilerini ve 

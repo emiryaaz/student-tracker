@@ -2,10 +2,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useContext } from 'react';
 import { AuthContext } from './context/AuthContext';
 
+import LandingPage from './pages/LandingPage';
+import Register from './pages/Register';
 import Login from './pages/Login';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
+import ParentDashboard from './pages/ParentDashboard';
 
 // Trafik Polisi: Kullanıcının rolüne bakar ve onu doğru adrese postalar
 const RoleRouter = () => {
@@ -20,6 +23,7 @@ const RoleRouter = () => {
     if (role === 'ADMIN') return <Navigate to="/admin" replace />;
     if (role === 'TEACHER') return <Navigate to="/teacher" replace />;
     if (role === 'STUDENT') return <Navigate to="/student" replace />;
+    if (role === 'PARENT') return <Navigate to="/parent" replace />; // YENİ: Veli Yönlendirmesi
     
     return <div className="p-8">Geçersiz veya yetkisiz rol!</div>;
 };
@@ -38,7 +42,9 @@ function App() {
     return (
         <Router>
             <Routes>
-                {/* Açık Rota */}
+                {/* YENİ: Açık Rotalar (Herkesin girebildiği vitrin ve kayıt) */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 
                 {/* Trafik Polisi Rotası */}
@@ -48,9 +54,10 @@ function App() {
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/teacher" element={<ProtectedRoute><TeacherDashboard /></ProtectedRoute>} />
                 <Route path="/student" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
+                <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
                 
-                {/* Bilinmeyen adresleri Trafik Polisine yolla */}
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                {/* Bilinmeyen adresleri Ana Sayfaya yolla */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>
     );
