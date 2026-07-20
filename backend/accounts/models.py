@@ -26,13 +26,11 @@ class TeacherProfile(models.Model):
     bio = models.TextField(blank=True, null=True, verbose_name="Hakkımda")
     hourly_rate = models.DecimalField(max_digits=7, decimal_places=2, blank=True, null=True, verbose_name="Saatlik Ücret (₺)")
     profile_picture = models.ImageField(upload_to='profiles/teachers/', blank=True, null=True, verbose_name="Profil Fotoğrafı")
-    
-    # Gelecekteki "Premium Eğitmen" doğrulama rozeti için
     is_verified = models.BooleanField(default=False, verbose_name="Doğrulanmış Eğitmen")
 
     def __str__(self):
         return f"Öğretmen: {self.user.first_name} {self.user.last_name}"
-
+        
 # 3. VELİ PROFİLİ (Öğrenciden ÖNCE tanımlanmalı ki öğrenci onu tanıyabilsin)
 class ParentProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='parent_profile')

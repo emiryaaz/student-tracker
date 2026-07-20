@@ -8,9 +8,10 @@ export default function TeacherDashboard() {
     const [activeTab, setActiveTab] = useState('home');
     const [studentsData, setStudentsData] = useState([]);
     const [assignmentsData, setAssignmentsData] = useState([]);
-    const [examsData, setExamsData] = useState([]);       // YENİ: Sınav verileri
-    const [resourcesData, setResourcesData] = useState([]); // YENİ: Kaynak verileri
+    const [examsData, setExamsData] = useState([]);       // Sınav verileri
+    const [resourcesData, setResourcesData] = useState([]); // Kaynak verileri
     const [loading, setLoading] = useState(true);
+    const [profileData, setProfileData] = useState(null); // YENİ: Profil verisi
 
     // MODAL STATELERİ
     const [activeModal, setActiveModal] = useState(null); // 'task', 'exam', 'resource' veya null
@@ -38,6 +39,22 @@ export default function TeacherDashboard() {
         }
     };
 
+    // YENİ: PROFIL VERİSİNİ ÇEKME FONKSİYONU
+    const fetchProfile = async () => {
+        try {
+            const token = localStorage.getItem('access');
+            const response = await fetch('http://localhost:8000/api/accounts/profile/me/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setProfileData(data);
+            }
+        } catch (error) {
+            console.error('Profil çekilemedi:', error);
+        }
+    };
+
     useEffect(() => {
         const fetchAllData = async () => {
             setLoading(true);
@@ -45,7 +62,8 @@ export default function TeacherDashboard() {
                 fetchData('my-students', setStudentsData),
                 fetchData('assignments', setAssignmentsData),
                 fetchData('exams', setExamsData),
-                fetchData('resources', setResourcesData)
+                fetchData('resources', setResourcesData),
+                fetchProfile() // YENİ: Yüklenirken profili de çek
             ]);
             setLoading(false);
         };
@@ -92,6 +110,39 @@ export default function TeacherDashboard() {
         }
     };
 
+    // YENİ: PROFİL GÜNCELLEME İŞLEMİ (PATCH)
+    const handleProfileSubmit = async (e) => {
+        e.preventDefault();
+        const formData = new FormData();
+        
+        if (e.target.title.value) formData.append('title', e.target.title.value);
+        if (e.target.bio.value) formData.append('bio', e.target.bio.value);
+        if (e.target.hourly_rate.value) formData.append('hourly_rate', e.target.hourly_rate.value);
+        
+        // Fotoğraf seçildiyse ekle
+        if (e.target.profile_picture.files.length > 0) {
+            formData.append('profile_picture', e.target.profile_picture.files[0]);
+        }
+
+        try {
+            const token = localStorage.getItem('access');
+            const res = await fetch('http://localhost:8000/api/accounts/profile/me/', {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` },
+                body: formData // JSON değil, FormData gönderiyoruz
+            });
+            
+            if (res.ok) {
+                alert("Profiliniz başarıyla güncellendi!");
+                fetchProfile(); // Ekrandaki veriyi güncelle
+            } else {
+                alert("Güncelleme başarısız oldu. Lütfen tekrar deneyin.");
+            }
+        } catch (error) {
+            console.error("Sunucu hatası:", error);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 relative">
             {/* SOL MENÜ */}
@@ -99,6 +150,7 @@ export default function TeacherDashboard() {
                 <div className="p-6 text-2xl font-bold border-b border-blue-700">EduTracker</div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {[
+                        { id: 'profile', label: 'Profilim & Vitrin' }, // YENİ SEKME EKLENDİ
                         { id: 'home', label: 'Ana Sayfa' },
                         { id: 'students', label: 'Öğrencilerim' },
                         { id: 'assignments', label: 'Ödev Takibi' },
@@ -131,6 +183,46 @@ export default function TeacherDashboard() {
                     </div>
                 ) : (
                     <>
+                        {/* YENİ: PROFIL SEKRESİ */}
+                        {activeTab === 'profile' && (
+                            <div className="bg-white p-8 rounded-lg shadow-sm max-w-3xl">
+                                <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
+                                
+                                <form onSubmit={handleProfileSubmit}>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Uzmanlık Ünvanı</label>
+                                            <input name="title" defaultValue={profileData?.title || ''} type="text" placeholder="Örn: Kıdemli Matematik Öğretmeni" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Saatlik Ders Ücreti (₺)</label>
+                                            <input name="hourly_rate" defaultValue={profileData?.hourly_rate || ''} type="number" step="0.01" placeholder="Örn: 500" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Hakkımda</label>
+                                            <textarea name="bio" rows="4" defaultValue={profileData?.bio || ''} placeholder="Geçmişinizden, eğitim tarzınızdan bahsedin..." className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"></textarea>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Profil Fotoğrafı</label>
+                                            {profileData?.profile_picture && (
+                                                <div className="mb-2">
+                                                    <img src={`http://localhost:8000${profileData.profile_picture}`} alt="Mevcut Profil" className="h-20 w-20 object-cover rounded-full border border-gray-200" />
+                                                </div>
+                                            )}
+                                            <input name="profile_picture" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
+                                        </div>
+                                        
+                                        <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition mt-4">
+                                            Profili ve Vitrini Kaydet
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
                         {/* ANA SAYFA İSTATİSTİKLERİ */}
                         {activeTab === 'home' && (
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -188,7 +280,6 @@ export default function TeacherDashboard() {
                         {activeTab === 'assignments' && (
                             <div className="bg-white p-6 rounded-lg shadow-sm">
                                 <h2 className="text-xl font-bold mb-6">Verilen Ödevler</h2>
-                                {/* Önceki ödev tablosu aynen korundu, yer tasarrufu için basit liste gösteriyorum */}
                                 <ul className="divide-y">
                                     {assignmentsData.map(a => (
                                         <li key={a.id} className="py-3 flex justify-between items-center">

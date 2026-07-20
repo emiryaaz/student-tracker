@@ -54,20 +54,13 @@ class Resource(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 class TeacherReview(models.Model):
-    # Yorum kime yapıldı?
     teacher = models.ForeignKey('accounts.TeacherProfile', on_delete=models.CASCADE, related_name='reviews')
-    # Yorumu kim yaptı? (Öğrenci veya Veli olabilir)
     reviewer = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='given_reviews')
-    
-    rating = models.IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)],
-        verbose_name="Puan (1-5)"
-    )
+    rating = models.IntegerField(validators=[MinValueValidator(1), MaxValueValidator(5)], verbose_name="Puan (1-5)")
     comment = models.TextField(verbose_name="Yorum/Değerlendirme")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        # Bir kişi aynı öğretmene sadece 1 yorum yapabilsin
         unique_together = ('teacher', 'reviewer')
 
     def __str__(self):
