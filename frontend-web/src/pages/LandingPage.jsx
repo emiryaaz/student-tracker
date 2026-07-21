@@ -9,13 +9,29 @@ export default function LandingPage() {
                     <div className="text-2xl font-black text-blue-800 tracking-tighter">
                         EduTracker<span className="text-blue-500">.</span>
                     </div>
-                    <div className="space-x-4">
-                        <Link to="/login" className="text-gray-600 hover:text-blue-600 font-medium transition">
-                            Giriş Yap
+                    <div className="flex items-center">
+                        <Link
+                            to="/teachers"
+                            className="text-gray-600 hover:text-blue-600 font-medium transition mr-8"
+                        >
+                            Eğitmenleri Keşfet
                         </Link>
-                        <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium transition shadow-md">
-                            Kayıt Ol
-                        </Link>
+
+                        <div className="flex gap-4">
+                            <Link
+                                to="/login"
+                                className="bg-gray-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium transition shadow-md"
+                            >
+                                Giriş Yap
+                            </Link>
+
+                            <Link
+                                to="/register"
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-full font-medium transition shadow-md"
+                            >
+                                Kayıt Ol
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -29,7 +45,7 @@ export default function LandingPage() {
                     <p className="text-xl text-gray-600 mb-10 leading-relaxed">
                         Öğretmenler, öğrenciler ve veliler için tasarlanmış hepsi bir arada eğitim yönetim platformu. Ödevler, sınavlar ve materyaller artık tek bir yerde.
                     </p>
-                    
+
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                         <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-full text-lg font-bold transition shadow-lg transform hover:-translate-y-1">
                             Hemen Ücretsiz Başla

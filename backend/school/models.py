@@ -65,3 +65,16 @@ class TeacherReview(models.Model):
 
     def __str__(self):
         return f"{self.rating} Yıldız - {self.reviewer.first_name} -> {self.teacher.user.first_name}"
+
+class Message(models.Model):
+    sender = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='sent_messages', verbose_name="Gönderen")
+    receiver = models.ForeignKey('accounts.User', on_delete=models.CASCADE, related_name='received_messages', verbose_name="Alıcı")
+    content = models.TextField(verbose_name="Mesaj İçeriği")
+    timestamp = models.DateTimeField(auto_now_add=True, verbose_name="Gönderilme Zamanı")
+    is_read = models.BooleanField(default=False, verbose_name="Okundu mu?")
+
+    class Meta:
+        ordering = ['timestamp'] # Mesajları eskiden yeniye doğru sıralar
+
+    def __str__(self):
+        return f"{self.sender.first_name} -> {self.receiver.first_name}: {self.content[:20]}"

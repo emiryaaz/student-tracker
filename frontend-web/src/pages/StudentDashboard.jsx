@@ -1,11 +1,13 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function StudentDashboard() {
     const { user, logout } = useContext(AuthContext);
-    
+    const navigate = useNavigate();
+
     const [activeTab, setActiveTab] = useState('home');
-    
+
     // Veri Stateleri
     const [assignments, setAssignments] = useState([]);
     const [exams, setExams] = useState([]);         // YENİ
@@ -72,6 +74,7 @@ export default function StudentDashboard() {
                     EduTracker
                 </div>
                 <nav className="flex-1 p-4 space-y-2">
+
                     <button onClick={() => setActiveTab('home')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'home' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
                         Özet Ekranı
                     </button>
@@ -84,6 +87,22 @@ export default function StudentDashboard() {
                     </button>
                     <button onClick={() => setActiveTab('resources')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'resources' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
                         Ders Materyalleri
+                    </button>
+                    <button
+                        onClick={() => navigate('/marketplace')}
+                        className="w-full text-left px-4 py-3 rounded transition hover:bg-gray-700 text-gray-300 hover:text-white flex items-center mb-2"
+                    >
+                        <span className="font-medium">Eğitmen Vitrini</span>
+                    </button>
+
+                    {/* Mesajlarım Butonu */}
+                    <button
+                        onClick={() => navigate('/messages')}
+                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between"
+                    >
+                        <div className="flex items-center">
+                            <span className="font-bold">Mesajlarım</span>
+                        </div>
                     </button>
                 </nav>
                 <div className="p-4 border-t border-teal-700">

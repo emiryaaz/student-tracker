@@ -74,3 +74,9 @@ class ProfileViewSet(viewsets.ViewSet):
             {"detail": "Bu işlemi yapmaya yetkiniz yok."}, 
             status=status.HTTP_403_FORBIDDEN
         )
+
+class TeacherListView(generics.ListAPIView):
+    # Sadece öğretmen profillerini ve bağlı oldukları kullanıcı bilgilerini çeker
+    queryset = TeacherProfile.objects.select_related('user').all()
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [AllowAny] # Üye olmayanlar da vitrini görebilir

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource
+from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message    
 from accounts.models import StudentProfile
 
 # Dersi ve sınıf seviyesini paketler
@@ -41,3 +41,14 @@ class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
         fields = '__all__'
+
+from .models import Message
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.CharField(source='sender.first_name', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.first_name', read_only=True) 
+    
+    class Meta:
+        model = Message
+        fields = ['id', 'sender', 'receiver', 'sender_name', 'receiver_name', 'content', 'timestamp', 'is_read']
+        read_only_fields = ['sender', 'timestamp', 'is_read']

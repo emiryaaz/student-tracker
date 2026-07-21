@@ -7,15 +7,16 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['id', 'email', 'role', 'first_name', 'last_name']
 
 class TeacherProfileSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='user.id', read_only=True) 
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
-    role = serializers.CharField(source='user.role', read_only=True) # EKSİK OLAN SATIR EKLENDİ
+    role = serializers.CharField(source='user.role', read_only=True)
 
     class Meta:
         model = TeacherProfile
         # 'role' verisini de React'e gönderiyoruz:
-        fields = ('id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified')
+        fields = ('id','user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified')
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
     

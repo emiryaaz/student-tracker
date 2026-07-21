@@ -1,9 +1,10 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function TeacherDashboard() {
     const { user, logout } = useContext(AuthContext);
-    
+    const navigate = useNavigate();
     // SEKME VE VERİ STATELERİ
     const [activeTab, setActiveTab] = useState('home');
     const [studentsData, setStudentsData] = useState([]);
@@ -149,6 +150,12 @@ export default function TeacherDashboard() {
             <div className="w-64 bg-blue-800 text-white flex flex-col">
                 <div className="p-6 text-2xl font-bold border-b border-blue-700">EduTracker</div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    <button
+                        onClick={() => navigate('/messages')}
+                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between mt-2 mb-4"
+                    >
+                        <span className="font-bold">Mesajlarım</span>
+                    </button>
                     {[
                         { id: 'profile', label: 'Profilim & Vitrin' }, // YENİ SEKME EKLENDİ
                         { id: 'home', label: 'Ana Sayfa' },
