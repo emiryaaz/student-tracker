@@ -80,3 +80,17 @@ class TeacherListView(generics.ListAPIView):
     queryset = TeacherProfile.objects.select_related('user').all()
     serializer_class = TeacherProfileSerializer
     permission_classes = [AllowAny] # Üye olmayanlar da vitrini görebilir
+
+class TeacherDetailView(generics.RetrieveAPIView):
+    queryset = TeacherProfile.objects.all() # Model ismin neyse onu yaz (örn: TeacherProfile veya Teacher)
+    serializer_class = TeacherProfileSerializer # Serializer ismin
+    permission_classes = [] # Herkesin profili görmesine izin ver
+
+class ProfileUpdateView(generics.RetrieveUpdateAPIView):
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [IsAuthenticated] # Sadece giriş yapanlar profilini güncelleyebilir
+
+    def get_object(self):
+        # PATCH veya GET isteği atan kişinin (kendi) profilini bulup döndürür
+        # Eğer modelin User ile OneToOne bağlıysa ve related_name 'teacher_profile' ise:
+        return self.request.user.teacher_profile

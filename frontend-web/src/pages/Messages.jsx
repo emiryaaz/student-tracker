@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
@@ -11,9 +11,22 @@ export default function Messages() {
     const [chatMessages, setChatMessages] = useState([]);
     const [content, setContent] = useState('');
     const navigate = useNavigate();
+    
+    // YENİ: Mesajların sonuna kaydırmak için referans noktası
+    const messagesEndRef = useRef(null);
 
-    // Kullanıcının ID'sini güvenli bir şekilde alıyoruz
-    const myId = user?.id || user?.user?.id;
+    const myId = user?.user?.id || user?.user_id || user?.id;
+    const myName = user?.user?.first_name || user?.first_name;
+
+    // YENİ: Otomatik aşağı kaydırma fonksiyonu
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    // YENİ: chatMessages dizisi her değiştiğinde (mesaj geldiğinde/gittiğinde) aşağı kaydır
+    useEffect(() => {
+        scrollToBottom();
+    }, [chatMessages]);
 
     useEffect(() => {
         if (!user) {
@@ -79,7 +92,6 @@ export default function Messages() {
             });
             if (res.ok) {
                 setContent('');
-                // Mesaj gönderilir gönderilmez sağ ekranı manuel güncelliyoruz
                 const chatRes = await fetch(`http://localhost:8000/api/school/messages/?user_id=${chatUserId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
@@ -93,12 +105,12 @@ export default function Messages() {
         }
     };
 
-    // KİŞİLERİ GRUPLAMA MANTIĞI (Artık İsimle değil, ID ile kesin eşleşiyor)
     const contactsMap = {};
     
     if (Array.isArray(allMessages)) {
         allMessages.forEach(msg => {
-            const isMeSender = msg.sender === myId;
+            const isMeSender = Number(msg.sender) === Number(myId) || msg.sender_name === myName;
+            
             const otherUserId = isMeSender ? msg.receiver : msg.sender;
             const otherUserName = isMeSender ? msg.receiver_name : msg.sender_name;
 
@@ -110,7 +122,6 @@ export default function Messages() {
                     timestamp: msg.timestamp
                 };
             } else {
-                // En güncel mesaja göre listeyi yenile
                 if (new Date(msg.timestamp) > new Date(contactsMap[otherUserId].timestamp)) {
                     contactsMap[otherUserId].lastMessage = msg.content;
                     contactsMap[otherUserId].timestamp = msg.timestamp;
@@ -119,7 +130,6 @@ export default function Messages() {
         });
     }
     
-    // Son mesaja göre sıralama
     const contacts = Object.values(contactsMap).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     const isTeacher = user?.role === 'TEACHER' || user?.user?.role === 'TEACHER';
 
@@ -127,11 +137,12 @@ export default function Messages() {
         <div className="min-h-screen bg-gray-200 flex items-center justify-center p-2 md:p-4">
             <div className="w-full max-w-6xl bg-white rounded-xl shadow-2xl overflow-hidden flex h-[90vh] border border-gray-300">
                 
-                {/* SOL PANEL: KİŞİ LİSTESİ (Mobilde sohbet açıksa gizlenir) */}
+                {/* SOL PANEL: KİŞİ LİSTESİ */}
                 <div className={`w-full md:w-1/3 bg-gray-50 border-r border-gray-200 flex flex-col ${chatUserId ? 'hidden md:flex' : 'flex'}`}>
                     <div className="p-4 bg-gray-100 border-b border-gray-200 flex justify-between items-center">
                         <h2 className="font-bold text-gray-800 text-lg">Mesajlarım</h2>
-                        <button onClick={() => navigate(-1)} className="text-sm text-blue-600 hover:underline font-medium">Geri Dön</button>
+                        {/* YENİ: navigate(-1) yerine navigate('/') kullanıldı */}
+                        <button onClick={() => navigate('/dashboard')} className="text-sm text-blue-600 hover:underline font-medium">Ana Ekrana Dön</button>
                     </div>
                     
                     <div className="flex-1 overflow-y-auto">
@@ -144,7 +155,7 @@ export default function Messages() {
                                 <button 
                                     key={contact.id} 
                                     onClick={() => navigate(`/messages?user_id=${contact.id}`)}
-                                    className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-100 transition flex flex-col ${Number(chatUserId) === contact.id ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}
+                                    className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-100 transition flex flex-col ${Number(chatUserId) === Number(contact.id) ? 'bg-blue-100 border-l-4 border-blue-600' : ''}`}
                                 >
                                     <div className="flex justify-between items-center mb-1 w-full">
                                         <span className="font-bold text-gray-900 truncate pr-2">{contact.name}</span>
@@ -159,7 +170,7 @@ export default function Messages() {
                     </div>
                 </div>
 
-                {/* SAĞ PANEL: SOHBET ALANI (Mobilde sohbet kapalıysa gizlenir) */}
+                {/* SAĞ PANEL: SOHBET ALANI */}
                 <div className={`w-full md:w-2/3 flex flex-col bg-slate-50 relative ${!chatUserId ? 'hidden md:flex' : 'flex'}`}>
                     {!chatUserId ? (
                         <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
@@ -174,7 +185,7 @@ export default function Messages() {
                     ) : (
                         <>
                             <div className="bg-white p-4 border-b border-gray-200 flex items-center gap-3 shadow-sm z-10">
-                                {/* Mobilde geri dönme butonu */}
+                                {/* Mobildeki bu buton sadece kişi listesine (sola) döner, uygulamadan çıkmaz */}
                                 <button onClick={() => navigate('/messages')} className="md:hidden p-2 bg-gray-100 rounded-full text-gray-600 hover:bg-gray-200 flex items-center justify-center">
                                     ←
                                 </button>
@@ -183,7 +194,8 @@ export default function Messages() {
                             
                             <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 flex flex-col">
                                 {chatMessages.map(msg => {
-                                    const isMe = msg.sender === myId;
+                                    const isMe = Number(msg.sender) !== Number(chatUserId);
+                                    
                                     return (
                                         <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
                                             <div className={`px-4 py-2 rounded-2xl max-w-[80%] md:max-w-[70%] shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'}`}>
@@ -195,6 +207,8 @@ export default function Messages() {
                                         </div>
                                     );
                                 })}
+                                {/* YENİ: Otomatik kaydırmanın hedef noktası */}
+                                <div ref={messagesEndRef} />
                             </div>
                             
                             <form onSubmit={sendMessage} className="p-4 bg-gray-100 border-t border-gray-200 flex gap-3">

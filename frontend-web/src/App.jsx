@@ -12,6 +12,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import TeachersDirectory from './pages/TeachersDirectory';
 import Messages from './pages/Messages';
 import InternalMarketplace from './pages/InternalMarketplace';
+import TeacherProfile from './pages/TeacherProfile';
 
 // Trafik Polisi: Kullanıcının rolüne bakar ve onu doğru adrese postalar
 const RoleRouter = () => {
@@ -52,6 +53,7 @@ function App() {
                 <Route path="/teachers" element={<TeachersDirectory />} />
                 <Route path="/messages" element={<Messages />} />
                 <Route path="/marketplace" element={<InternalMarketplace />} />
+                <Route path="/teacher/:id" element={<TeacherProfile />} />
                 {/* Trafik Polisi Rotası */}
                 <Route path="/dashboard" element={<RoleRouter />} />
         

@@ -1,13 +1,13 @@
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
+import { AuthContext } from '../context/AuthContext'; // YENİDEN EKLENDİ: En güvenilir kontrolcü
 
 export default function TeachersDirectory() {
-    const { user } = useContext(AuthContext); // Kullanıcının giriş yapıp yapmadığını kontrol eder
+    const { user } = useContext(AuthContext); // React state'inden kullanıcının anlık durumunu alıyoruz
     const navigate = useNavigate();
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showAuthModal, setShowAuthModal] = useState(false); // Pop-up durumunu tutar
+    const [showAuthModal, setShowAuthModal] = useState(false);
 
     useEffect(() => {
         fetch('http://localhost:8000/api/accounts/teachers/')
@@ -23,12 +23,12 @@ export default function TeachersDirectory() {
     }, []);
 
     // İletişime Geç butonuna tıklandığında çalışacak fonksiyon
-    const handleContactClick = (teacherUserId) => {
+    const handleContactClick = () => {
         if (user) {
-            // Kullanıcı giriş yapmışsa sohbet ekranına yönlendir
-            navigate(`/messages?user_id=${teacherUserId}`);
+            // Context'te aktif bir kullanıcı varsa (kesin giriş yapılmışsa) iç vitrine yönlendir
+            navigate('/marketplace');
         } else {
-            // Giriş yapmamışsa modal'ı (pop-up) aç
+            // Kullanıcı yoksa (ziyaretçiyse) pop-up'ı %100 aç
             setShowAuthModal(true); 
         }
     };
@@ -93,20 +93,18 @@ export default function TeachersDirectory() {
                                     
                                     {/* Aksiyon Alanı */}
                                     <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-center gap-4">
-
                                         <button 
-                                            onClick={() => handleContactClick(teacher.user_id)}
+                                            onClick={handleContactClick}
                                             className="bg-gray-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
                                         >
                                             İletişime Geç
                                         </button>
-
-                                        <button className="bg-gray-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm">
-
-                                            Profili İncele
-
-                                        </button>
-
+                                        <button 
+        onClick={() => navigate(`/teacher/${teacher.id}`)} 
+        className="bg-gray-900 hover:bg-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
+    >
+        Profili İncele
+    </button>
                                     </div>
                                 </div>
                             </div>
@@ -129,7 +127,7 @@ export default function TeachersDirectory() {
                         
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">Giriş Gerekli</h3>
                         <p className="text-gray-600 mb-6">
-                            Eğitmenlerimizle güvenli sohbet başlatmak için lütfen giriş yapın veya ücretsiz kayıt olun.
+                            Eğitmenlerimizle iletişime geçebilmek için üye olmalı ya da giriş yapmalısınız.
                         </p>
                         
                         <div className="space-y-3">

@@ -32,8 +32,8 @@ export default function InternalMarketplace() {
                     <h1 className="text-3xl font-bold text-gray-900">Eğitmen Vitrini</h1>
                     <p className="text-gray-500 mt-1">Branşında uzman öğretmenlerle tanışın ve hemen iletişime geçin.</p>
                 </div>
-                <button 
-                    onClick={() => navigate(-1)} 
+                <button
+                    onClick={() => navigate(-1)}
                     className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 transition shadow-sm font-medium"
                 >
                     Geri Dön
@@ -49,7 +49,7 @@ export default function InternalMarketplace() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {teachers.map(teacher => (
                         <div key={teacher.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition relative">
-                            
+
                             {/* Profil Resmi & Temel Bilgiler */}
                             <div className="flex items-center gap-4 mb-4">
                                 {teacher.profile_picture ? (
@@ -67,28 +67,35 @@ export default function InternalMarketplace() {
                                     <p className="text-blue-600 text-sm font-medium">{teacher.title || 'Eğitmen'}</p>
                                 </div>
                             </div>
-                            
+
                             {/* Biyografi */}
                             <p className="text-gray-600 text-sm mb-6 flex-1 line-clamp-3">
                                 {teacher.bio || 'Henüz bir açıklama eklenmemiş.'}
                             </p>
-                            
+
                             {/* Aksiyon Alanı: Müsait Durumu ve Mesaj Butonu */}
-                            <div className="mt-auto border-t border-gray-100 pt-4 flex justify-between items-center">
-                                 <span className="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded-md flex items-center">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
-                                    Müsait
-                                </span>
-                                {/* Doğrudan Sistem İçi Mesajlaşmaya Yönlendirir */}
-                                <button 
-                                    onClick={() => navigate(`/messages?user_id=${teacher.user_id}`)}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 shadow-sm"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
-                                    </svg>
-                                    Mesaj At
-                                </button>
+                            <div className="mt-auto border-t border-gray-100 pt-4 flex flex-wrap gap-3 justify-between items-center">
+                                <div className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
+                                    {/* YENİ EKLENEN PROFİLİ İNCELE BUTONU */}
+                                    <button
+                                        onClick={() => navigate(`/teacher/${teacher.id}`)}
+                                        className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm flex-1 sm:flex-none text-center"
+                                    >
+                                        Profili İncele
+                                    </button>
+
+                                    {/* MEVCUT MESAJ AT BUTONU */}
+                                    <button
+                                        onClick={() => navigate(`/messages?user_id=${teacher.user_id}`)}
+                                        className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm flex-1 sm:flex-none"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+                                        </svg>
+                                        Mesaj At
+                                    </button>
+                                </div>
+
                             </div>
                         </div>
                     ))}
