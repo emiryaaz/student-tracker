@@ -4,6 +4,8 @@ from .serializers import (TutoringRelationSerializer, AssignmentSerializer,
                           ExamResultSerializer, ResourceSerializer, MessageSerializer)
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
 
 class TeacherStudentsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TutoringRelationSerializer
@@ -44,18 +46,26 @@ class MessageListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # Parametre olarak 'user_id' gelirse, o kişiyle olan mesajlaşmaları getirir
         user = self.request.user
-        other_user_id = self.request.query_params.get('user_id')
-        
-        if other_user_id:
+        chat_user_id = self.request.query_params.get('user_id')
+
+        if chat_user_id:
+            # HARİKA DETAY: Eğer bir sohbet açılmışsa, o kişiden gelen mesajları otomatik OKUNDU yap!
+            Message.objects.filter(sender_id=chat_user_id, receiver=user, is_read=False).update(is_read=True)
+
             return Message.objects.filter(
-                Q(sender=user, receiver_id=other_user_id) | 
-                Q(sender_id=other_user_id, receiver=user)
-            )
-        # Parametre yoksa kullanıcının dahil olduğu tüm mesajları getirir
-        return Message.objects.filter(Q(sender=user) | Q(receiver=user))
+                (Q(sender=user) & Q(receiver_id=chat_user_id)) |
+                (Q(sender_id=chat_user_id) & Q(receiver=user))
+            ).order_by('timestamp')
+
+        return Message.objects.filter(Q(sender=user) | Q(receiver=user)).order_by
 
     def perform_create(self, serializer):
         # Mesaj gönderildiğinde 'sender' kısmını otomatik olarak istek atan kullanıcı yaparız
         serializer.save(sender=self.request.user)
+
+class UnreadMessageCountView(APIView):
+    def get(self, request):
+        # Sadece bana gelen ve okunmamış olan mesajları say
+        count = Message.objects.filter(receiver=request.user, is_read=False).count()
+        return Response({'unread_count': count})

@@ -23,6 +23,7 @@ export default function TeacherDashboard() {
     const [taskData, setTaskData] = useState({ title: '', description: '', due_date: '' });
     const [examData, setExamData] = useState({ exam_name: '', score: '', exam_date: '', notes: '' });
     const [resourceData, setResourceData] = useState({ title: '', url: '' });
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // VERİ ÇEKME FONKSİYONLARI
     const fetchData = async (endpoint, setter) => {
@@ -115,11 +116,11 @@ export default function TeacherDashboard() {
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData();
-        
+
         if (e.target.title.value) formData.append('title', e.target.title.value);
         if (e.target.bio.value) formData.append('bio', e.target.bio.value);
         if (e.target.hourly_rate.value) formData.append('hourly_rate', e.target.hourly_rate.value);
-        
+
         // Fotoğraf seçildiyse ekle
         if (e.target.profile_picture.files.length > 0) {
             formData.append('profile_picture', e.target.profile_picture.files[0]);
@@ -132,7 +133,7 @@ export default function TeacherDashboard() {
                 headers: { 'Authorization': `Bearer ${token}` },
                 body: formData // JSON değil, FormData gönderiyoruz
             });
-            
+
             if (res.ok) {
                 alert("Profiliniz başarıyla güncellendi!");
                 fetchProfile(); // Ekrandaki veriyi güncelle
@@ -143,6 +144,30 @@ export default function TeacherDashboard() {
             console.error("Sunucu hatası:", error);
         }
     };
+
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            const token = localStorage.getItem('access');
+            if (!token) return;
+
+            try {
+                const res = await fetch('http://localhost:8000/api/school/messages/unread-count/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUnreadCount(data.unread_count);
+                }
+            } catch (error) {
+                console.error("Bildirimler çekilemedi", error);
+            }
+        };
+
+        fetchUnreadCount(); // Sayfa açılınca anında çek
+        const interval = setInterval(fetchUnreadCount, 3000); // Her 3 saniyede bir kontrol et
+
+        return () => clearInterval(interval);
+    }, []);
 
     return (
         <div className="flex h-screen bg-gray-100 relative">
@@ -156,6 +181,11 @@ export default function TeacherDashboard() {
                     >
                         <span className="font-bold">Mesajlarım</span>
                     </button>
+                    {unreadCount > 0 && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                            {unreadCount}
+                        </span>
+                    )}
                     {[
                         { id: 'profile', label: 'Profilim & Vitrin' }, // YENİ SEKME EKLENDİ
                         { id: 'home', label: 'Ana Sayfa' },
@@ -164,7 +194,7 @@ export default function TeacherDashboard() {
                         { id: 'exams', label: 'Sınav Notları' },
                         { id: 'resources', label: 'Ders Materyalleri' }
                     ].map(tab => (
-                        <button 
+                        <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`w-full text-left px-4 py-3 rounded transition ${activeTab === tab.id ? 'bg-blue-600 shadow' : 'hover:bg-blue-700'}`}
@@ -194,24 +224,24 @@ export default function TeacherDashboard() {
                         {activeTab === 'profile' && (
                             <div className="bg-white p-8 rounded-lg shadow-sm max-w-3xl">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
-                                
+
                                 <form onSubmit={handleProfileSubmit}>
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Uzmanlık Ünvanı</label>
                                             <input name="title" defaultValue={profileData?.title || ''} type="text" placeholder="Örn: Kıdemli Matematik Öğretmeni" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Saatlik Ders Ücreti (₺)</label>
                                             <input name="hourly_rate" defaultValue={profileData?.hourly_rate || ''} type="number" step="0.01" placeholder="Örn: 500" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Hakkımda</label>
                                             <textarea name="bio" rows="4" defaultValue={profileData?.bio || ''} placeholder="Geçmişinizden, eğitim tarzınızdan bahsedin..." className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"></textarea>
                                         </div>
-                                        
+
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Profil Fotoğrafı</label>
                                             {profileData?.profile_picture && (
@@ -221,7 +251,7 @@ export default function TeacherDashboard() {
                                             )}
                                             <input name="profile_picture" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
                                         </div>
-                                        
+
                                         <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition mt-4">
                                             Profili ve Vitrini Kaydet
                                         </button>
@@ -359,30 +389,30 @@ export default function TeacherDashboard() {
 
                         {/* ÖDEV FORMU */}
                         {activeModal === 'task' && (
-                            <form onSubmit={(e) => handleSubmit(e, 'assignments', { ...taskData, status: 'PENDING' }, setAssignmentsData, () => setTaskData({title:'', description:'', due_date:''}))} className="space-y-4">
-                                <input type="text" required placeholder="Ödev Başlığı" className="w-full border p-2 rounded" value={taskData.title} onChange={e => setTaskData({...taskData, title: e.target.value})} />
-                                <textarea placeholder="Açıklama" className="w-full border p-2 rounded" value={taskData.description} onChange={e => setTaskData({...taskData, description: e.target.value})}></textarea>
-                                <input type="datetime-local" required className="w-full border p-2 rounded" value={taskData.due_date} onChange={e => setTaskData({...taskData, due_date: e.target.value})} />
+                            <form onSubmit={(e) => handleSubmit(e, 'assignments', { ...taskData, status: 'PENDING' }, setAssignmentsData, () => setTaskData({ title: '', description: '', due_date: '' }))} className="space-y-4">
+                                <input type="text" required placeholder="Ödev Başlığı" className="w-full border p-2 rounded" value={taskData.title} onChange={e => setTaskData({ ...taskData, title: e.target.value })} />
+                                <textarea placeholder="Açıklama" className="w-full border p-2 rounded" value={taskData.description} onChange={e => setTaskData({ ...taskData, description: e.target.value })}></textarea>
+                                <input type="datetime-local" required className="w-full border p-2 rounded" value={taskData.due_date} onChange={e => setTaskData({ ...taskData, due_date: e.target.value })} />
                                 <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Gönder</button></div>
                             </form>
                         )}
 
                         {/* SINAV FORMU */}
                         {activeModal === 'exam' && (
-                            <form onSubmit={(e) => handleSubmit(e, 'exams', examData, setExamsData, () => setExamData({exam_name:'', score:'', exam_date:'', notes:''}))} className="space-y-4">
-                                <input type="text" required placeholder="Sınav/Konu Adı (Örn: Matematik Vize)" className="w-full border p-2 rounded" value={examData.exam_name} onChange={e => setExamData({...examData, exam_name: e.target.value})} />
-                                <input type="number" step="0.01" required placeholder="Puan / Net" className="w-full border p-2 rounded" value={examData.score} onChange={e => setExamData({...examData, score: e.target.value})} />
-                                <input type="date" required className="w-full border p-2 rounded" value={examData.exam_date} onChange={e => setExamData({...examData, exam_date: e.target.value})} />
-                                <textarea placeholder="Öğretmen Notu (Opsiyonel)" className="w-full border p-2 rounded" value={examData.notes} onChange={e => setExamData({...examData, notes: e.target.value})}></textarea>
+                            <form onSubmit={(e) => handleSubmit(e, 'exams', examData, setExamsData, () => setExamData({ exam_name: '', score: '', exam_date: '', notes: '' }))} className="space-y-4">
+                                <input type="text" required placeholder="Sınav/Konu Adı (Örn: Matematik Vize)" className="w-full border p-2 rounded" value={examData.exam_name} onChange={e => setExamData({ ...examData, exam_name: e.target.value })} />
+                                <input type="number" step="0.01" required placeholder="Puan / Net" className="w-full border p-2 rounded" value={examData.score} onChange={e => setExamData({ ...examData, score: e.target.value })} />
+                                <input type="date" required className="w-full border p-2 rounded" value={examData.exam_date} onChange={e => setExamData({ ...examData, exam_date: e.target.value })} />
+                                <textarea placeholder="Öğretmen Notu (Opsiyonel)" className="w-full border p-2 rounded" value={examData.notes} onChange={e => setExamData({ ...examData, notes: e.target.value })}></textarea>
                                 <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-purple-600 text-white rounded">Kaydet</button></div>
                             </form>
                         )}
 
                         {/* KAYNAK FORMU */}
                         {activeModal === 'resource' && (
-                            <form onSubmit={(e) => handleSubmit(e, 'resources', resourceData, setResourcesData, () => setResourceData({title:'', url:''}))} className="space-y-4">
-                                <input type="text" required placeholder="Kaynak Başlığı (Örn: Türev PDF)" className="w-full border p-2 rounded" value={resourceData.title} onChange={e => setResourceData({...resourceData, title: e.target.value})} />
-                                <input type="url" placeholder="Link/URL (Opsiyonel)" className="w-full border p-2 rounded" value={resourceData.url} onChange={e => setResourceData({...resourceData, url: e.target.value})} />
+                            <form onSubmit={(e) => handleSubmit(e, 'resources', resourceData, setResourcesData, () => setResourceData({ title: '', url: '' }))} className="space-y-4">
+                                <input type="text" required placeholder="Kaynak Başlığı (Örn: Türev PDF)" className="w-full border p-2 rounded" value={resourceData.title} onChange={e => setResourceData({ ...resourceData, title: e.target.value })} />
+                                <input type="url" placeholder="Link/URL (Opsiyonel)" className="w-full border p-2 rounded" value={resourceData.url} onChange={e => setResourceData({ ...resourceData, url: e.target.value })} />
                                 <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Paylaş</button></div>
                             </form>
                         )}
