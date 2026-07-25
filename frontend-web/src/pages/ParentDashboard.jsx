@@ -13,6 +13,7 @@ export default function ParentDashboard() {
     const [exams, setExams] = useState([]);         // YENİ
     const [resources, setResources] = useState([]); // YENİ
     const [loading, setLoading] = useState(true);
+    const [unreadCount, setUnreadCount] = useState(0);
 
     // Öğrenci panelinde yaptığımız gibi veli için de tüm verileri çekiyoruz
     useEffect(() => {
@@ -39,6 +40,30 @@ export default function ParentDashboard() {
         };
 
         fetchAllData();
+    }, []);
+
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            const token = localStorage.getItem('access');
+            if (!token) return;
+
+            try {
+                const res = await fetch('http://localhost:8000/api/school/messages/unread-count/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setUnreadCount(data.unread_count);
+                }
+            } catch (error) {
+                console.error("Bildirimler çekilemedi", error);
+            }
+        };
+
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 3000);
+
+        return () => clearInterval(interval);
     }, []);
 
     const getParentName = () => user?.first_name || user?.user?.first_name || 'Değerli Velimiz';
@@ -79,7 +104,13 @@ export default function ParentDashboard() {
                         className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between"
                     >
                         <div className="flex items-center">
-                            <span className="font-bold">Mesajlarım</span>
+                            <span className="font-bold">Mesajlarım
+                                {unreadCount > 0 && (
+                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </span>
                         </div>
                     </button>
                 </nav>

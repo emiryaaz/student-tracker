@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message    
+from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent
 from accounts.models import StudentProfile
 
 # Dersi ve sınıf seviyesini paketler
@@ -42,8 +42,6 @@ class ResourceSerializer(serializers.ModelSerializer):
         model = Resource
         fields = '__all__'
 
-from .models import Message
-
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.CharField(source='sender.first_name', read_only=True)
     receiver_name = serializers.CharField(source='receiver.first_name', read_only=True) 
@@ -52,3 +50,18 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = ['id', 'sender', 'receiver', 'sender_name', 'receiver_name', 'content', 'timestamp', 'is_read']
         read_only_fields = ['sender', 'timestamp', 'is_read']
+
+class MatchRequestSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='student.get_full_name', read_only=True)
+    teacher_name = serializers.CharField(source='teacher.get_full_name', read_only=True)
+    
+    class Meta:
+        model = MatchRequest
+        fields = '__all__'
+        # ÇÖZÜM: Django'ya bu alanları kapıdaki kontrolde sorma diyoruz!
+        read_only_fields = ['student', 'status']
+
+class CalendarEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CalendarEvent
+        fields = '__all__'

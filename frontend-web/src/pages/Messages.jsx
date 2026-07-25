@@ -114,6 +114,12 @@ export default function Messages() {
             const otherUserId = isMeSender ? msg.receiver : msg.sender;
             const otherUserName = isMeSender ? msg.receiver_name : msg.sender_name;
 
+            // YENİ VE KESİN ÇÖZÜM: Kendimizi listeye eklemeyi zorla engelliyoruz!
+            // Eğer karşı tarafın ID'si benim ID'me veya karşı tarafın adı benim adıma eşitse bu işlemi atla.
+            if (Number(otherUserId) === Number(myId) || otherUserName === myName) {
+                return; 
+            }
+
             if (!contactsMap[otherUserId]) {
                 contactsMap[otherUserId] = {
                     id: otherUserId,

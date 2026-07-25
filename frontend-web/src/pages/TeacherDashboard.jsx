@@ -179,13 +179,15 @@ export default function TeacherDashboard() {
                         onClick={() => navigate('/messages')}
                         className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between mt-2 mb-4"
                     >
-                        <span className="font-bold">Mesajlarım</span>
-                    </button>
-                    {unreadCount > 0 && (
-                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
-                            {unreadCount}
+                        <span className="font-bold">Mesajlarım
+                            {unreadCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </span>
-                    )}
+
+                    </button>
                     {[
                         { id: 'profile', label: 'Profilim & Vitrin' }, // YENİ SEKME EKLENDİ
                         { id: 'home', label: 'Ana Sayfa' },

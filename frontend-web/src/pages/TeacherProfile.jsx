@@ -6,10 +6,12 @@ export default function TeacherProfile() {
     const { id } = useParams(); // URL'den öğretmenin ID'sini alır
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
-    
+
     const [teacher, setTeacher] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showAuthModal, setShowAuthModal] = useState(false);
+    const [showRequestModal, setShowRequestModal] = useState(false);
+    const [note, setNote] = useState('');
 
     useEffect(() => {
         // Öğretmenin detay bilgilerini çeken endpoint
@@ -32,13 +34,51 @@ export default function TeacherProfile() {
 
     const handleContactClick = () => {
         const token = localStorage.getItem('access'); // Ekstra güvenlik için token kontrolü
-        
+
         if (user || token) {
             // Kullanıcı giriş yapmışsa doğrudan bu öğretmenin mesaj ekranına gönder
             navigate(`/messages?user_id=${teacher?.user_id}`);
         } else {
             // Giriş yapmamışsa pop-up aç
             setShowAuthModal(true);
+        }
+    };
+
+    const handleSendRequest = async () => {
+        const token = localStorage.getItem('access');
+        
+        if (!token) {
+            setShowRequestModal(false);
+            setShowAuthModal(true); // Giriş yapmamışsa uyarı ver
+            return;
+        }
+
+        // ÇÖZÜM NOKTASI: Backend'e profil ID'sini değil, User (Kullanıcı) ID'sini göndermeliyiz.
+        // Eğer veritabanından gelen teacher objesinin içinde "user" varsa onu alır, yoksa URL'deki id'yi dener.
+        const targetTeacherId = teacher?.user?.id || teacher?.user || id;
+
+        try {
+            const res = await fetch('http://localhost:8000/api/school/match-requests/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ teacher: targetTeacherId, note: note }) 
+            });
+
+            if (res.ok) {
+                alert("Talebiniz öğretmene başarıyla iletildi!");
+                setShowRequestModal(false);
+                setNote(''); // Formu temizle
+            } else {
+                // EĞER HATA VERİRSE DJANGO'NUN GÖNDERDİĞİ MESAJI EKRANA YAZDIR
+                const errorData = await res.json();
+                console.error("Backend'den dönen HATA:", errorData);
+                alert("Hata detayları: " + JSON.stringify(errorData));
+            }
+        } catch (error) {
+            console.error("Sunucuya ulaşılamadı:", error);
         }
     };
 
@@ -66,8 +106,8 @@ export default function TeacherProfile() {
             <div className="max-w-5xl mx-auto">
                 {/* Üst Navigasyon / Geri Dön */}
                 <div className="mb-6 flex justify-between items-center">
-                    <button 
-                        onClick={() => navigate(-1)} 
+                    <button
+                        onClick={() => navigate(-1)}
                         className="flex items-center text-gray-600 hover:text-blue-600 font-medium transition"
                     >
                         <span className="mr-2">←</span> Geri Dön
@@ -77,16 +117,16 @@ export default function TeacherProfile() {
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {/* Profil Arka Plan Kapak Resmi */}
                     <div className="h-48 bg-gradient-to-r from-blue-600 to-teal-500 relative"></div>
-                    
+
                     <div className="px-4 md:px-8 pb-10">
                         {/* Profil Fotoğrafı ve Temel Bilgiler */}
                         <div className="relative flex flex-col md:flex-row justify-between items-center md:items-end -mt-16 mb-8 gap-6 md:gap-0">
                             <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
                                 {teacher.profile_picture ? (
-                                    <img 
-                                        src={`http://localhost:8000${teacher.profile_picture}`} 
-                                        alt={teacher.first_name} 
-                                        className="h-32 w-32 object-cover rounded-2xl border-4 border-white shadow-lg bg-white" 
+                                    <img
+                                        src={`http://localhost:8000${teacher.profile_picture}`}
+                                        alt={teacher.first_name}
+                                        className="h-32 w-32 object-cover rounded-2xl border-4 border-white shadow-lg bg-white"
                                     />
                                 ) : (
                                     <div className="h-32 w-32 rounded-2xl border-4 border-white shadow-lg bg-gray-100 flex items-center justify-center text-gray-400 text-4xl font-black">
@@ -102,11 +142,17 @@ export default function TeacherProfile() {
                                 </div>
                             </div>
 
-                            {/* İletişime Geç Butonu */}
-                            <div className="mb-2 w-full md:w-auto">
+                            <div className="mb-2 w-full md:w-auto flex flex-col sm:flex-row gap-3 justify-center md:justify-end">
+                                <button 
+                                    onClick={() => setShowRequestModal(true)}
+                                    className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
+                                >
+                                    📅 Ders Talebi
+                                </button>
+                                
                                 <button 
                                     onClick={handleContactClick}
-                                    className="w-full md:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
+                                    className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
                                 >
                                     💬 İletişime Geç
                                 </button>
@@ -158,6 +204,54 @@ export default function TeacherProfile() {
                         <div className="space-y-3">
                             <Link to="/login" className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition">Giriş Yap</Link>
                             <Link to="/register" className="block w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 font-bold py-3 rounded-lg transition">Hesap Oluştur</Link>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* DERS TALEBİ GÖNDERME MODALI */}
+            {showRequestModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
+                    <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
+                        {/* Kapatma Çarpısı */}
+                        <button 
+                            onClick={() => setShowRequestModal(false)} 
+                            className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
+                        >
+                            &times;
+                        </button>
+                        
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Ders Talebi Oluştur</h3>
+                        <p className="text-gray-600 mb-6 text-sm">
+                            <span className="font-semibold text-gray-800">
+                                {teacher?.first_name} {teacher?.last_name}
+                            </span> adlı eğitmene ders almak istediğinizi belirten bir istek gönderiyorsunuz.
+                        </p>
+                        
+                        <div className="mb-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Öğretmene Notunuz (İsteğe bağlı)
+                            </label>
+                            <textarea 
+                                className="w-full border border-gray-300 rounded-xl p-4 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 h-32 resize-none transition"
+                                placeholder="Örn: Haftada 2 gün matematik dersi almak istiyorum, uygun günlerinizi konuşabilir miyiz?"
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                            ></textarea>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button 
+                                onClick={() => setShowRequestModal(false)}
+                                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition"
+                            >
+                                İptal
+                            </button>
+                            <button 
+                                onClick={handleSendRequest}
+                                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition shadow-md"
+                            >
+                                Talebi Gönder
+                            </button>
                         </div>
                     </div>
                 </div>

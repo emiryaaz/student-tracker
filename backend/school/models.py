@@ -1,6 +1,7 @@
 from django.db import models
 from accounts.models import TeacherProfile, StudentProfile
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.conf import settings
 
 # STANDART DERS/BRANŞ MODELİ (Sıralama ve testler için kullanılacak)
 class Subject(models.Model):
@@ -78,3 +79,53 @@ class Message(models.Model):
 
     def __str__(self):
         return f"{self.sender.first_name} -> {self.receiver.first_name}: {self.content[:20]}"
+
+# 1. EŞLEŞME TALEBİ MODELİ (Öğrenci -> Öğretmen)
+class MatchRequest(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Bekliyor'),
+        ('ACCEPTED', 'Kabul Edildi'),
+        ('REJECTED', 'Reddedildi'),
+    )
+    
+    # Talebi gönderen (Öğrenci) ve alan (Öğretmen)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sent_requests')
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='received_requests')
+    
+    status = models.CharField(max_length=15, choices=STATUS_CHOICES, default='PENDING')
+    note = models.TextField(blank=True, null=True, help_text="Öğrencinin öğretmene iletmek istediği ilk mesaj/not")
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.student.first_name} -> {self.teacher.first_name} ({self.get_status_display()})"
+
+
+# 2. TAKVİM ETKİNLİĞİ MODELİ (Ders, Ödev, Sınav)
+class CalendarEvent(models.Model):
+    EVENT_TYPES = (
+        ('LESSON', 'Ders'),
+        ('HOMEWORK', 'Ödev'),
+        ('EXAM', 'Sınav'),
+        ('OTHER', 'Diğer'),
+    )
+    
+    title = models.CharField(max_length=255, help_text="Örn: Matematik Türev Dersi, Fizik Deneme Sınavı")
+    description = models.TextField(blank=True, null=True)
+    event_type = models.CharField(max_length=15, choices=EVENT_TYPES, default='LESSON')
+    
+    # Etkinliği kim oluşturdu (Genelde öğretmen)
+    creator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_events')
+    
+    # Etkinliğin kimin takviminde görüneceği (Öğrenci). 
+    # Veli de backend'den "çocuğunun" etkinliklerini çekeceği için buraya veliyi eklemeye gerek yok.
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='student_events', null=True, blank=True)
+    
+    start_time = models.DateTimeField()
+    end_time = models.DateTimeField()
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} - {self.get_event_type_display()}"
