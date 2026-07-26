@@ -55,7 +55,7 @@ export default function TeacherProfile() {
 
         // ÇÖZÜM NOKTASI: Backend'e profil ID'sini değil, User (Kullanıcı) ID'sini göndermeliyiz.
         // Eğer veritabanından gelen teacher objesinin içinde "user" varsa onu alır, yoksa URL'deki id'yi dener.
-        const targetTeacherId = teacher?.user?.id || teacher?.user || id;
+        const targetTeacherId = teacher?.user_id || teacher?.user?.id || teacher?.user || id;
 
         try {
             const res = await fetch('http://localhost:8000/api/school/match-requests/', {

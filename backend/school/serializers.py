@@ -28,15 +28,19 @@ class TutoringRelationSerializer(serializers.ModelSerializer):
         fields = ['id', 'student', 'subject', 'is_active', 'started_at']
 
 class AssignmentSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='relation.student.user.first_name', read_only=True)
+
     class Meta:
         model = Assignment
         fields = '__all__'
 
 class ExamResultSerializer(serializers.ModelSerializer):
+    student_name = serializers.CharField(source='relation.student.user.first_name', read_only=True)
+
     class Meta:
         model = ExamResult
         fields = '__all__'
-
+        
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource

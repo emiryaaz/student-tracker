@@ -135,6 +135,12 @@ export default function StudentDashboard() {
                             </span>
                         </div>
                     </button>
+                    <button
+                        onClick={() => navigate('/calendar')}
+                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
+                    >
+                        <span className="font-bold">Takvim</span>
+                    </button>
                 </nav>
                 <div className="p-4 border-t border-teal-700">
                     <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>

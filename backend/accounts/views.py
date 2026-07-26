@@ -75,6 +75,30 @@ class ProfileViewSet(viewsets.ViewSet):
             status=status.HTTP_403_FORBIDDEN
         )
 
+    @action(detail=False, methods=['post'])
+    def link_child(self, request):
+        """Veli, öğrencisinin e-posta adresini girerek onu kendi hesabına bağlar"""
+        user = request.user
+        if user.role != 'PARENT':
+            return Response({"detail": "Sadece veliler öğrenci bağlayabilir."}, status=status.HTTP_403_FORBIDDEN)
+
+        email = request.data.get('student_email', '').strip().lower()
+        if not email:
+            return Response({"detail": "Öğrenci e-postası gerekli."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            student_user = User.objects.get(email__iexact=email, role='STUDENT')
+        except User.DoesNotExist:
+            return Response({"detail": "Bu e-postaya sahip bir öğrenci bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        student_profile, _ = StudentProfile.objects.get_or_create(user=student_user)
+        parent_profile, _ = ParentProfile.objects.get_or_create(user=user)
+
+        student_profile.parent = parent_profile
+        student_profile.save()
+
+        return Response(ParentProfileSerializer(parent_profile).data, status=status.HTTP_200_OK)
+
 class TeacherListView(generics.ListAPIView):
     # Sadece öğretmen profillerini ve bağlı oldukları kullanıcı bilgilerini çeker
     queryset = TeacherProfile.objects.select_related('user').all()

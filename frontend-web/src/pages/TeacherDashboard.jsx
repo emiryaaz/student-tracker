@@ -24,6 +24,7 @@ export default function TeacherDashboard() {
     const [examData, setExamData] = useState({ exam_name: '', score: '', exam_date: '', notes: '' });
     const [resourceData, setResourceData] = useState({ title: '', url: '' });
     const [unreadCount, setUnreadCount] = useState(0);
+    const [requests, setRequests] = useState([]);
 
     // VERİ ÇEKME FONKSİYONLARI
     const fetchData = async (endpoint, setter) => {
@@ -169,6 +170,51 @@ export default function TeacherDashboard() {
         return () => clearInterval(interval);
     }, []);
 
+    useEffect(() => {
+        const fetchRequests = async () => {
+            const token = localStorage.getItem('access');
+            if (!token) return;
+
+            try {
+                const res = await fetch('http://localhost:8000/api/school/match-requests/', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setRequests(data);
+                }
+            } catch (error) {
+                console.error("Talepler çekilemedi", error);
+            }
+        };
+
+        fetchRequests();
+    }, []);
+
+    const handleRespond = async (id, status) => {
+        const token = localStorage.getItem('access');
+
+        try {
+            const res = await fetch(`http://localhost:8000/api/school/match-requests/${id}/respond/`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ status: status })
+            });
+
+            if (res.ok) {
+                // Ekranda güncellenmiş durumu anında göstermek için listeyi filtrele veya güncelle
+                setRequests(requests.map(req =>
+                    req.id === id ? { ...req, status: status } : req
+                ));
+            }
+        } catch (error) {
+            console.error("Yanıt gönderilemedi", error);
+        }
+    };
+
     return (
         <div className="flex h-screen bg-gray-100 relative">
             {/* SOL MENÜ */}
@@ -181,15 +227,20 @@ export default function TeacherDashboard() {
                     >
                         <span className="font-bold">Mesajlarım
                             {unreadCount > 0 && (
-                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce ml-2">
                                     {unreadCount}
                                 </span>
                             )}
                         </span>
-
+                    </button>
+                    <button
+                        onClick={() => navigate('/calendar')}
+                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mb-4"
+                    >
+                        <span className="font-bold">Takvim</span>
                     </button>
                     {[
-                        { id: 'profile', label: 'Profilim & Vitrin' }, // YENİ SEKME EKLENDİ
+                        { id: 'profile', label: 'Profilim & Vitrin' },
                         { id: 'home', label: 'Ana Sayfa' },
                         { id: 'students', label: 'Öğrencilerim' },
                         { id: 'assignments', label: 'Ödev Takibi' },
@@ -222,7 +273,7 @@ export default function TeacherDashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* YENİ: PROFIL SEKRESİ */}
+                        {/* PROFIL SEKRESİ */}
                         {activeTab === 'profile' && (
                             <div className="bg-white p-8 rounded-lg shadow-sm max-w-3xl">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
@@ -262,24 +313,91 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* ANA SAYFA İSTATİSTİKLERİ */}
+                        {/* ANA SAYFA İSTATİSTİKLERİ VE GELEN TALEPLER */}
                         {activeTab === 'home' && (
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
-                                    <h3 className="text-gray-500 text-sm font-bold uppercase">Öğrenciler</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-1">{studentsData.length}</p>
+                            <div className="space-y-8">
+                                {/* Üst Kısım: İstatistik Kartları */}
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
+                                        <h3 className="text-gray-500 text-sm font-bold uppercase">Öğrenciler</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{studentsData.length}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
+                                        <h3 className="text-gray-500 text-sm font-bold uppercase">Verilen Ödevler</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{assignmentsData.length}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
+                                        <h3 className="text-gray-500 text-sm font-bold uppercase">Girilen Notlar</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{examsData.length}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
+                                        <h3 className="text-gray-500 text-sm font-bold uppercase">Materyaller</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-1">{resourcesData.length}</p>
+                                    </div>
                                 </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
-                                    <h3 className="text-gray-500 text-sm font-bold uppercase">Verilen Ödevler</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-1">{assignmentsData.length}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
-                                    <h3 className="text-gray-500 text-sm font-bold uppercase">Girilen Notlar</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-1">{examsData.length}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
-                                    <h3 className="text-gray-500 text-sm font-bold uppercase">Materyaller</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-1">{resourcesData.length}</p>
+
+                                {/* Alt Kısım: Gelen Ders Talepleri */}
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                    <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                                        📥 Gelen Ders Talepleri
+                                    </h2>
+                                    
+                                    {requests.length === 0 ? (
+                                        <div className="text-center py-8 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+                                            <p className="text-gray-500 font-medium">Henüz yeni bir ders talebiniz bulunmuyor.</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {requests.map(req => (
+                                                <div key={req.id} className="border border-gray-200 rounded-xl p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition hover:shadow-md bg-white">
+                                                    
+                                                    {/* Öğrenci Bilgisi ve Not */}
+                                                    <div className="flex-1">
+                                                        <h4 className="font-bold text-gray-900 text-lg">
+                                                            {req.student_name}
+                                                        </h4>
+                                                        <div className="bg-blue-50/50 p-3 rounded-lg mt-2 border border-blue-100/50">
+                                                            <p className="text-sm text-gray-700">
+                                                                <span className="font-semibold text-blue-800">Not: </span> 
+                                                                {req.note ? req.note : <span className="italic text-gray-400">Not eklenmemiş.</span>}
+                                                            </p>
+                                                        </div>
+                                                        <span className="text-xs text-gray-400 mt-3 flex items-center gap-1">
+                                                            🕒 {new Date(req.created_at).toLocaleDateString('tr-TR')}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Aksiyon Butonları veya Durum Rozeti */}
+                                                    <div className="w-full md:w-auto flex shrink-0">
+                                                        {req.status === 'PENDING' ? (
+                                                            <div className="flex gap-2 w-full md:w-auto">
+                                                                <button 
+                                                                    onClick={() => handleRespond(req.id, 'ACCEPTED')}
+                                                                    className="flex-1 md:flex-none bg-teal-500 hover:bg-teal-600 text-white px-5 py-2.5 rounded-lg font-semibold transition shadow-sm"
+                                                                >
+                                                                    Kabul Et
+                                                                </button>
+                                                                <button 
+                                                                    onClick={() => handleRespond(req.id, 'REJECTED')}
+                                                                    className="flex-1 md:flex-none bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-lg font-semibold transition border border-red-200/50"
+                                                                >
+                                                                    Reddet
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className={`px-4 py-2 rounded-lg text-sm font-bold w-full md:w-auto text-center ${
+                                                                req.status === 'ACCEPTED' 
+                                                                ? 'bg-teal-50 text-teal-700 border border-teal-200' 
+                                                                : 'bg-red-50 text-red-700 border border-red-200'
+                                                            }`}>
+                                                                {req.status === 'ACCEPTED' ? '✓ Kabul Edildi' : '✕ Reddedildi'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
@@ -301,7 +419,7 @@ export default function TeacherDashboard() {
                                             {studentsData.map((rel) => (
                                                 <tr key={rel.id} className="hover:bg-blue-50 transition">
                                                     <td className="p-4 font-medium">{rel.student.first_name} {rel.student.last_name}</td>
-                                                    <td className="p-4 text-sm">{rel.subject.grade_level}. Sınıf - {rel.subject.name}</td>
+                                                    <td className="p-4 text-sm">{rel.subject ? `${rel.subject.grade_level}. Sınıf - ${rel.subject.name}` : 'Ders belirtilmemiş'}</td>
                                                     <td className="p-4 text-right space-x-2">
                                                         <button onClick={() => openModal('task', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-sm">+ Ödev</button>
                                                         <button onClick={() => openModal('exam', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm">+ Not</button>

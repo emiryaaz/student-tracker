@@ -15,8 +15,13 @@ export default function ParentDashboard() {
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    const [children, setChildren] = useState([]);
+    const [childEmail, setChildEmail] = useState('');
+    const [linking, setLinking] = useState(false);
+    const [linkMessage, setLinkMessage] = useState({ type: '', text: '' });
+
     // Öğrenci panelinde yaptığımız gibi veli için de tüm verileri çekiyoruz
-    useEffect(() => {
+    
         const fetchAllData = async () => {
             try {
                 const token = localStorage.getItem('access');
@@ -38,7 +43,7 @@ export default function ParentDashboard() {
                 setLoading(false);
             }
         };
-
+    useEffect(() => {    
         fetchAllData();
     }, []);
 
@@ -66,6 +71,55 @@ export default function ParentDashboard() {
         return () => clearInterval(interval);
     }, []);
 
+    const fetchChildren = async () => {
+        try {
+            const token = localStorage.getItem('access');
+            const res = await fetch('http://localhost:8000/api/accounts/profiles/me/', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setChildren(data.children || []);
+            }
+        } catch (error) {
+            console.error('Bağlı öğrenciler çekilemedi:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchChildren();
+    }, []);
+
+    const handleLinkChild = async (e) => {
+        e.preventDefault();
+        setLinking(true);
+        setLinkMessage({ type: '', text: '' });
+        try {
+            const token = localStorage.getItem('access');
+            const res = await fetch('http://localhost:8000/api/accounts/profiles/link_child/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ student_email: childEmail })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setChildren(data.children || []);
+                setChildEmail('');
+                setLinkMessage({ type: 'success', text: 'Öğrenci başarıyla bağlandı.' });
+                fetchAllData(); // Yeni bağlanan öğrencinin ödev/sınav/kaynak verilerini de çek
+            } else {
+                setLinkMessage({ type: 'error', text: data.detail || 'Bir hata oluştu.' });
+            }
+        } catch (error) {
+            setLinkMessage({ type: 'error', text: 'Sunucuya ulaşılamadı.' });
+        } finally {
+            setLinking(false);
+        }
+    };
+    
     const getParentName = () => user?.first_name || user?.user?.first_name || 'Değerli Velimiz';
 
     const pendingTasks = assignments.filter(a => a.status === 'PENDING').length;
@@ -113,6 +167,12 @@ export default function ParentDashboard() {
                             </span>
                         </div>
                     </button>
+                     <button
+                        onClick={() => navigate('/calendar')}
+                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
+                    >
+                        <span className="font-bold">Takvim</span>
+                    </button>
                 </nav>
                 <div className="p-4 border-t border-purple-800">
                     <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
@@ -125,6 +185,40 @@ export default function ParentDashboard() {
                     <h1 className="text-3xl font-bold text-gray-800">Hoş Geldiniz, {getParentName()}</h1>
                     <p className="text-gray-600 mt-2">Çocuğunuzun tüm akademik sürecini buradan takip edebilirsiniz.</p>
                 </header>
+
+                <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
+                    <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
+                    {children.length === 0 ? (
+                        <p className="text-gray-500 mb-4">Henüz hiçbir öğrenci hesabınıza bağlı değil. Çocuğunuzun kayıt olurken kullandığı e-posta adresini girerek bağlayabilirsiniz.</p>
+                    ) : (
+                        <ul className="mb-4 space-y-1">
+                            {children.map(child => (
+                                <li key={child.id} className="text-gray-800 font-medium">
+                                    👤 {child.user.first_name} {child.user.last_name} <span className="text-gray-400 text-sm">({child.user.email})</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    <form onSubmit={handleLinkChild} className="flex gap-2">
+                        <input
+                            type="email"
+                            required
+                            placeholder="Öğrencinin e-posta adresi"
+                            value={childEmail}
+                            onChange={(e) => setChildEmail(e.target.value)}
+                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-purple-500"
+                        />
+                        <button type="submit" disabled={linking} className="bg-purple-700 hover:bg-purple-800 text-white font-bold px-4 py-2 rounded-lg transition disabled:opacity-50">
+                            {linking ? 'Bağlanıyor...' : 'Öğrenci Ekle'}
+                        </button>
+                    </form>
+                    {linkMessage.text && (
+                        <p className={`mt-3 text-sm font-medium ${linkMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                            {linkMessage.text}
+                        </p>
+                    )}
+                </div>
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">

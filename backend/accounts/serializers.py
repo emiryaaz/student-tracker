@@ -17,12 +17,23 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         model = TeacherProfile
         # 'role' verisini de React'e gönderiyoruz:
         fields = ('id','user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified')
+        
+class ChildSummarySerializer(serializers.ModelSerializer):
+    """Veli panelinde bağlı öğrencileri listelemek için hafif serializer (StudentProfileSerializer'ı
+    kullanırsak parent alanı üzerinden içiçe geçme/döngü oluşur, o yüzden ayrı ve sade tutuyoruz)"""
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = StudentProfile
+        fields = ('id', 'user')
+
 class ParentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    
+    children = ChildSummarySerializer(many=True, read_only=True)
+
     class Meta:
         model = ParentProfile
-        fields = '__all__'
+        fields = ('id', 'user', 'phone_number', 'children')
 
 class StudentProfileSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)

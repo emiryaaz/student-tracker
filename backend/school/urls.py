@@ -1,18 +1,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (TeacherStudentsViewSet, AssignmentViewSet, 
-                    ExamResultViewSet, ResourceViewSet, MessageListCreateView, UnreadMessageCountView, MatchRequestListCreateView, MatchRequestRespondView)
+                    ExamResultViewSet, ResourceViewSet, MessageListCreateView, UnreadMessageCountView, MatchRequestListCreateView, MatchRequestRespondView,CalendarEventViewSet)
 
 router = DefaultRouter()
 router.register(r'my-students', TeacherStudentsViewSet, basename='my-students')
 router.register(r'assignments', AssignmentViewSet, basename='assignments')
 router.register(r'exams', ExamResultViewSet, basename='exams')
 router.register(r'resources', ResourceViewSet, basename='resources')
+router.register(r'calendar-events', CalendarEventViewSet, basename='calendar-events')
 
 urlpatterns = [
     path('', include(router.urls)),
     path('messages/', MessageListCreateView.as_view(), name='messages'),
     path('messages/unread-count/', UnreadMessageCountView.as_view(), name='unread-count'),
     path('match-requests/', MatchRequestListCreateView.as_view(), name='match-requests'),
-    path('match-requests//respond/', MatchRequestRespondView.as_view(), name='match-request-respond')
+    path('match-requests/<int:pk>/respond/', MatchRequestRespondView.as_view(), name='match-request-respond')
+    
 ]

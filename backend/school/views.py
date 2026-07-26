@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions, generics
-from .models import TutoringRelation, Assignment, ExamResult, Resource, Message
+from .models import TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent
 from .serializers import (TutoringRelationSerializer, AssignmentSerializer,
                           ExamResultSerializer, ResourceSerializer, MessageSerializer)
 from django.db.models import Q
@@ -9,8 +9,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
-from .models import MatchRequest, CalendarEvent
 from .serializers import MatchRequestSerializer, CalendarEventSerializer
+from accounts.models import TeacherProfile, StudentProfile
 
 class TeacherStudentsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TutoringRelationSerializer
@@ -83,14 +83,14 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        # Öğretmense kendisine gelenleri, öğrenciyse kendi attıklarını görsün
-        # (Rol kontrolünü kendi sistemine göre revize edebilirsin)
-        if hasattr(user, 'teacher_profile'): 
-            return MatchRequest.objects.filter(teacher=user).order_by('-created_at')
-        return MatchRequest.objects.filter(student=user).order_by('-created_at')
+        
+        # KESİN ÇÖZÜM: Rol kontrolü (if) yapmadan, bu kullanıcının
+        # İSTER ÖĞRETMEN İSTER ÖĞRENCİ OLARAK dahil olduğu tüm talepleri getir!
+        return MatchRequest.objects.filter(
+            Q(teacher=user) | Q(student=user)
+        ).order_by('-created_at')
 
     def perform_create(self, serializer):
-        # İsteği atan kişiyi otomatik olarak "student" kaydet
         serializer.save(student=self.request.user)
 
 # 2. Öğretmenin İsteği Onaylaması / Reddetmesi
@@ -109,6 +109,15 @@ class MatchRequestRespondView(APIView):
 
             # HARİKA DETAY: Eğer öğretmen kabul ederse, yarına otomatik "İlk Ders" etkinliği oluştur
             if new_status == 'ACCEPTED':
+                teacher_profile, _ = TeacherProfile.objects.get_or_create(user=match_request.teacher)
+                student_profile, _ = StudentProfile.objects.get_or_create(user=match_request.student)
+                TutoringRelation.objects.get_or_create(
+                    tutor=teacher_profile,
+                    student=student_profile,
+                    subject=None,
+                )
+
+                
                 start = timezone.now() + timedelta(days=1) # Yarın aynı saat
                 CalendarEvent.objects.create(
                     title=f"{match_request.student.first_name} ile İlk Ders",
@@ -121,3 +130,25 @@ class MatchRequestRespondView(APIView):
 
             return Response({"message": f"Talep {new_status} olarak güncellendi."})
         return Response({"error": "Geçersiz durum."}, status=status.HTTP_400_BAD_REQUEST)
+
+class CalendarEventViewSet(viewsets.ModelViewSet):
+    """Takvim: öğretmen kendi oluşturduğu etkinlikleri, öğrenci kendi adına
+    açılmış etkinlikleri, veli ise çocuğunun etkinliklerini görür."""
+    serializer_class = CalendarEventSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'TEACHER':
+            return CalendarEvent.objects.filter(creator=user).order_by('start_time')
+        elif user.role == 'STUDENT':
+            return CalendarEvent.objects.filter(student=user).order_by('start_time')
+        elif user.role == 'PARENT':
+            return CalendarEvent.objects.filter(
+                student__student_profile__parent__user=user
+            ).order_by('start_time')
+        return CalendarEvent.objects.none()
+
+    def perform_create(self, serializer):
+        # Etkinliği sadece öğretmenler oluşturabilir, oluşturan otomatik kendisi olur
+        serializer.save(creator=self.request.user)
