@@ -16,9 +16,9 @@ export default function Login() {
         e.preventDefault();
         setError('');
         try {
-            // 1. Adım: E-posta ve şifre ile token al
             const tokenResponse = await api.post('/token/', { email, password });
             const accessToken = tokenResponse.data.access;
+            const refreshToken = tokenResponse.data.refresh;
             
             // 2. Adım: Geçici olarak bu istek için header'a token'ı ekle
             api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
@@ -26,8 +26,8 @@ export default function Login() {
             // 3. Adım: Kullanıcının profil bilgilerini ve rolünü çek
             const profileResponse = await api.get('/accounts/profiles/me/');
             
-            // 4. Adım: Hem kullanıcı verisini hem de token'ı Context'e kaydet
-            login(profileResponse.data, accessToken);
+            // 4. Adım: Hem kullanıcı verisini hem de her iki token'ı Context'e kaydet
+            login(profileResponse.data, accessToken, refreshToken);
             
             // Başarılı girişten sonra Dashboard'a yönlendir
             navigate('/dashboard');

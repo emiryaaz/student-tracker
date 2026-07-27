@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function ParentDashboard() {
     const { user, logout } = useContext(AuthContext);
@@ -15,51 +16,42 @@ export default function ParentDashboard() {
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    // Bağlı öğrenciler ve öğrenci ekleme formu
     const [children, setChildren] = useState([]);
     const [childEmail, setChildEmail] = useState('');
     const [linking, setLinking] = useState(false);
     const [linkMessage, setLinkMessage] = useState({ type: '', text: '' });
 
     // Öğrenci panelinde yaptığımız gibi veli için de tüm verileri çekiyoruz
-    
-        const fetchAllData = async () => {
-            try {
-                const token = localStorage.getItem('access');
-                const headers = { 'Authorization': `Bearer ${token}` };
+    const fetchAllData = async () => {
+        try {
+            // Promise.all yerine allSettled: biri başarısız olsa bile diğer ikisi ekrana yansısın
+            const [resAssignments, resExams, resResources] = await Promise.allSettled([
+                api.get('/school/assignments/'),
+                api.get('/school/exams/'),
+                api.get('/school/resources/')
+            ]);
 
-                const [resAssignments, resExams, resResources] = await Promise.all([
-                    fetch('http://localhost:8000/api/school/assignments/', { headers }),
-                    fetch('http://localhost:8000/api/school/exams/', { headers }),
-                    fetch('http://localhost:8000/api/school/resources/', { headers })
-                ]);
+            if (resAssignments.status === 'fulfilled') setAssignments(resAssignments.value.data);
+            if (resExams.status === 'fulfilled') setExams(resExams.value.data);
+            if (resResources.status === 'fulfilled') setResources(resResources.value.data);
 
-                if (resAssignments.ok) setAssignments(await resAssignments.json());
-                if (resExams.ok) setExams(await resExams.json());
-                if (resResources.ok) setResources(await resResources.json());
+        } catch (error) {
+            console.error('Veriler çekilemedi:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-            } catch (error) {
-                console.error('Veriler çekilemedi:', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-    useEffect(() => {    
+    useEffect(() => {
         fetchAllData();
     }, []);
 
     useEffect(() => {
         const fetchUnreadCount = async () => {
-            const token = localStorage.getItem('access');
-            if (!token) return;
-
             try {
-                const res = await fetch('http://localhost:8000/api/school/messages/unread-count/', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUnreadCount(data.unread_count);
-                }
+                const response = await api.get('/school/messages/unread-count/');
+                setUnreadCount(response.data.unread_count);
             } catch (error) {
                 console.error("Bildirimler çekilemedi", error);
             }
@@ -73,14 +65,8 @@ export default function ParentDashboard() {
 
     const fetchChildren = async () => {
         try {
-            const token = localStorage.getItem('access');
-            const res = await fetch('http://localhost:8000/api/accounts/profiles/me/', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (res.ok) {
-                const data = await res.json();
-                setChildren(data.children || []);
-            }
+            const response = await api.get('/accounts/profiles/me/');
+            setChildren(response.data.children || []);
         } catch (error) {
             console.error('Bağlı öğrenciler çekilemedi:', error);
         }
@@ -95,31 +81,18 @@ export default function ParentDashboard() {
         setLinking(true);
         setLinkMessage({ type: '', text: '' });
         try {
-            const token = localStorage.getItem('access');
-            const res = await fetch('http://localhost:8000/api/accounts/profiles/link_child/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ student_email: childEmail })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setChildren(data.children || []);
-                setChildEmail('');
-                setLinkMessage({ type: 'success', text: 'Öğrenci başarıyla bağlandı.' });
-                fetchAllData(); // Yeni bağlanan öğrencinin ödev/sınav/kaynak verilerini de çek
-            } else {
-                setLinkMessage({ type: 'error', text: data.detail || 'Bir hata oluştu.' });
-            }
+            const response = await api.post('/accounts/profiles/link_child/', { student_email: childEmail });
+            setChildren(response.data.children || []);
+            setChildEmail('');
+            setLinkMessage({ type: 'success', text: 'Öğrenci başarıyla bağlandı.' });
+            fetchAllData(); // Yeni bağlanan öğrencinin ödev/sınav/kaynak verilerini de çek
         } catch (error) {
-            setLinkMessage({ type: 'error', text: 'Sunucuya ulaşılamadı.' });
+            setLinkMessage({ type: 'error', text: error.response?.data?.detail || 'Bir hata oluştu.' });
         } finally {
             setLinking(false);
         }
     };
-    
+
     const getParentName = () => user?.first_name || user?.user?.first_name || 'Değerli Velimiz';
 
     const pendingTasks = assignments.filter(a => a.status === 'PENDING').length;
@@ -167,11 +140,13 @@ export default function ParentDashboard() {
                             </span>
                         </div>
                     </button>
-                     <button
+
+                    {/* Takvim Butonu */}
+                    <button
                         onClick={() => navigate('/calendar')}
                         className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
                     >
-                        <span className="font-bold">Takvim</span>
+                        <span className="font-bold">📅 Takvim</span>
                     </button>
                 </nav>
                 <div className="p-4 border-t border-purple-800">
@@ -186,6 +161,7 @@ export default function ParentDashboard() {
                     <p className="text-gray-600 mt-2">Çocuğunuzun tüm akademik sürecini buradan takip edebilirsiniz.</p>
                 </header>
 
+                {/* BAĞLI ÖĞRENCİLER VE ÖĞRENCİ EKLEME */}
                 <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
                     <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
                     {children.length === 0 ? (

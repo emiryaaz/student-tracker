@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import api from '../services/api';
 
 const DAY_NAMES = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const MONTH_NAMES = [
@@ -35,21 +36,19 @@ export default function Calendar() {
     const [viewDate, setViewDate] = useState(new Date()); // Görüntülenen ay
     const [selectedDate, setSelectedDate] = useState(toDateKey(new Date().toISOString()));
 
-    useEffect(() => {
-        const token = localStorage.getItem('access');
-        const headers = { 'Authorization': `Bearer ${token}` };
-
+     useEffect(() => {
         const fetchAll = async () => {
             setLoading(true);
             try {
-                const [lessonsRes, homeworksRes, examsRes] = await Promise.all([
-                    fetch('http://localhost:8000/api/school/calendar-events/', { headers }),
-                    fetch('http://localhost:8000/api/school/assignments/', { headers }),
-                    fetch('http://localhost:8000/api/school/exams/', { headers }),
+                // Promise.all yerine allSettled: biri başarısız olsa bile diğer ikisi takvimde görünsün
+                const [lessonsRes, homeworksRes, examsRes] = await Promise.allSettled([
+                    api.get('/school/calendar-events/'),
+                    api.get('/school/assignments/'),
+                    api.get('/school/exams/'),
                 ]);
-                setLessons(lessonsRes.ok ? await lessonsRes.json() : []);
-                setHomeworks(homeworksRes.ok ? await homeworksRes.json() : []);
-                setExams(examsRes.ok ? await examsRes.json() : []);
+                setLessons(lessonsRes.status === 'fulfilled' ? lessonsRes.value.data : []);
+                setHomeworks(homeworksRes.status === 'fulfilled' ? homeworksRes.value.data : []);
+                setExams(examsRes.status === 'fulfilled' ? examsRes.value.data : []);
             } catch (error) {
                 console.error('Takvim verileri çekilemedi:', error);
             } finally {

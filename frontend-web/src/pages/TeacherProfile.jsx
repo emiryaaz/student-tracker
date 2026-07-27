@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import api from '../services/api';
 
 export default function TeacherProfile() {
     const { id } = useParams(); // URL'den öğretmenin ID'sini alır
@@ -14,16 +15,10 @@ export default function TeacherProfile() {
     const [note, setNote] = useState('');
 
     useEffect(() => {
-        // Öğretmenin detay bilgilerini çeken endpoint
-        fetch(`http://localhost:8000/api/accounts/teachers/${id}/`)
+        // Öğretmenin detay bilgilerini çeken endpoint (herkese açık)
+        api.get(`/accounts/teachers/${id}/`)
             .then(res => {
-                if (!res.ok) {
-                    throw new Error('Eğitmen bulunamadı veya sunucu hatası.');
-                }
-                return res.json();
-            })
-            .then(data => {
-                setTeacher(data);
+                setTeacher(res.data);
                 setLoading(false);
             })
             .catch(err => {
@@ -54,31 +49,21 @@ export default function TeacherProfile() {
         }
 
         // ÇÖZÜM NOKTASI: Backend'e profil ID'sini değil, User (Kullanıcı) ID'sini göndermeliyiz.
-        // Eğer veritabanından gelen teacher objesinin içinde "user" varsa onu alır, yoksa URL'deki id'yi dener.
+        // TeacherProfileSerializer düz "user_id" alanı döner (nested "user" objesi yok),
+        // bu yüzden önce onu kullanmalıyız. URL'deki id, TeacherProfile'ın kendi pk'sı olduğu
+        // için son çare olarak bile kullanılmamalı; yine de eski davranışı bozmamak adına
+        // en son fallback olarak bırakıldı.
         const targetTeacherId = teacher?.user_id || teacher?.user?.id || teacher?.user || id;
 
         try {
-            const res = await fetch('http://localhost:8000/api/school/match-requests/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ teacher: targetTeacherId, note: note }) 
-            });
-
-            if (res.ok) {
-                alert("Talebiniz öğretmene başarıyla iletildi!");
-                setShowRequestModal(false);
-                setNote(''); // Formu temizle
-            } else {
-                // EĞER HATA VERİRSE DJANGO'NUN GÖNDERDİĞİ MESAJI EKRANA YAZDIR
-                const errorData = await res.json();
-                console.error("Backend'den dönen HATA:", errorData);
-                alert("Hata detayları: " + JSON.stringify(errorData));
-            }
+            await api.post('/school/match-requests/', { teacher: targetTeacherId, note: note });
+            alert("Talebiniz öğretmene başarıyla iletildi!");
+            setShowRequestModal(false);
+            setNote(''); // Formu temizle
         } catch (error) {
-            console.error("Sunucuya ulaşılamadı:", error);
+            // EĞER HATA VERİRSE DJANGO'NUN GÖNDERDİĞİ MESAJI EKRANA YAZDIR
+            console.error("Backend'den dönen HATA:", error.response?.data);
+            alert("Hata detayları: " + JSON.stringify(error.response?.data || {}));
         }
     };
 

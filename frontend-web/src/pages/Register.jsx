@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Register() {
     const navigate = useNavigate();
@@ -23,21 +24,15 @@ export default function Register() {
         setLoading(true);
 
         try {
-            const response = await fetch('http://localhost:8000/api/accounts/register/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
-            });
-
-            if (response.ok) {
-                alert("Kayıt başarılı! Lütfen giriş yapın.");
-                navigate('/login');
-            } else {
-                const data = await response.json();
-                setError(data.email ? "Bu e-posta adresi zaten kullanılıyor." : "Kayıt olurken bir hata oluştu.");
-            }
+            await api.post('/accounts/register/', formData);
+            alert("Kayıt başarılı! Lütfen giriş yapın.");
+            navigate('/login');
         } catch (err) {
-            setError("Sunucuya ulaşılamıyor.");
+            if (err.response) {
+                setError(err.response.data?.email ? "Bu e-posta adresi zaten kullanılıyor." : "Kayıt olurken bir hata oluştu.");
+            } else {
+                setError("Sunucuya ulaşılamıyor.");
+            }
         } finally {
             setLoading(false);
         }

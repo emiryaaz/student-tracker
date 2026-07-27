@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function StudentDashboard() {
     const { user, logout } = useContext(AuthContext);
@@ -19,18 +20,16 @@ export default function StudentDashboard() {
     useEffect(() => {
         const fetchAllData = async () => {
             try {
-                const token = localStorage.getItem('access');
-                const headers = { 'Authorization': `Bearer ${token}` };
-
-                const [resAssignments, resExams, resResources] = await Promise.all([
-                    fetch('http://localhost:8000/api/school/assignments/', { headers }),
-                    fetch('http://localhost:8000/api/school/exams/', { headers }),
-                    fetch('http://localhost:8000/api/school/resources/', { headers })
+                // Promise.all yerine allSettled: biri başarısız olsa bile diğer ikisi ekrana yansısın
+                const [resAssignments, resExams, resResources] = await Promise.allSettled([
+                    api.get('/school/assignments/'),
+                    api.get('/school/exams/'),
+                    api.get('/school/resources/')
                 ]);
 
-                if (resAssignments.ok) setAssignments(await resAssignments.json());
-                if (resExams.ok) setExams(await resExams.json());
-                if (resResources.ok) setResources(await resResources.json());
+                if (resAssignments.status === 'fulfilled') setAssignments(resAssignments.value.data);
+                if (resExams.status === 'fulfilled') setExams(resExams.value.data);
+                if (resResources.status === 'fulfilled') setResources(resResources.value.data);
 
             } catch (error) {
                 console.error('Veriler çekilemedi:', error);
@@ -44,17 +43,9 @@ export default function StudentDashboard() {
 
     useEffect(() => {
         const fetchUnreadCount = async () => {
-            const token = localStorage.getItem('access');
-            if (!token) return;
-
             try {
-                const res = await fetch('http://localhost:8000/api/school/messages/unread-count/', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUnreadCount(data.unread_count);
-                }
+                const response = await api.get('/school/messages/unread-count/');
+                setUnreadCount(response.data.unread_count);
             } catch (error) {
                 console.error("Bildirimler çekilemedi", error);
             }
@@ -70,23 +61,13 @@ export default function StudentDashboard() {
 
     const markAsCompleted = async (assignmentId) => {
         try {
-            const token = localStorage.getItem('access');
-            const response = await fetch(`http://localhost:8000/api/school/assignments/${assignmentId}/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: 'COMPLETED' })
-            });
-
-            if (response.ok) {
-                setAssignments(prev => prev.map(task => task.id === assignmentId ? { ...task, status: 'COMPLETED' } : task));
-            }
+            await api.patch(`/school/assignments/${assignmentId}/`, { status: 'COMPLETED' });
+            setAssignments(prev => prev.map(task => task.id === assignmentId ? { ...task, status: 'COMPLETED' } : task));
         } catch (error) {
             console.error("İstek başarısız:", error);
         }
     };
+
 
     const pendingTasks = assignments.filter(a => a.status === 'PENDING').length;
     const completedTasks = assignments.filter(a => a.status === 'COMPLETED').length;
@@ -135,11 +116,13 @@ export default function StudentDashboard() {
                             </span>
                         </div>
                     </button>
+
+                    {/* Takvim Butonu */}
                     <button
                         onClick={() => navigate('/calendar')}
                         className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
                     >
-                        <span className="font-bold">Takvim</span>
+                        <span className="font-bold">📅 Takvim</span>
                     </button>
                 </nav>
                 <div className="p-4 border-t border-teal-700">

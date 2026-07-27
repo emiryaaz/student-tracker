@@ -15,7 +15,7 @@ export const AuthProvider = ({ children }) => {
                 try {
                     // API isteklerine otomatik olarak token'ı ekle
                     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                    
+
                     // Yazdığımız /me/ uç noktasından profili getir
                     const response = await api.get('/accounts/profiles/me/');
                     setUser(response.data);
@@ -30,9 +30,12 @@ export const AuthProvider = ({ children }) => {
         fetchUser();
     }, []);
 
-    const login = (userData, token) => {
-        localStorage.setItem('access', token);
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    const login = (userData, accessToken, refreshToken) => {
+        localStorage.setItem('access', accessToken);
+        if (refreshToken) {
+            localStorage.setItem('refresh', refreshToken);
+        }
+        api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         setUser(userData);
     };
 

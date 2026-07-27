@@ -1,6 +1,7 @@
 import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function Messages() {
     const { user } = useContext(AuthContext);
@@ -35,15 +36,9 @@ export default function Messages() {
         }
 
         const fetchAllMessages = async () => {
-            const token = localStorage.getItem('access');
             try {
-                const res = await fetch(`http://localhost:8000/api/school/messages/`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) setAllMessages(data);
-                }
+                const res = await api.get('/school/messages/');
+                if (Array.isArray(res.data)) setAllMessages(res.data);
             } catch (error) {
                 console.error("Tüm mesajlar çekilemedi:", error);
             }
@@ -51,15 +46,9 @@ export default function Messages() {
 
         const fetchChatMessages = async () => {
             if (!chatUserId) return;
-            const token = localStorage.getItem('access');
             try {
-                const res = await fetch(`http://localhost:8000/api/school/messages/?user_id=${chatUserId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    if (Array.isArray(data)) setChatMessages(data);
-                }
+                const res = await api.get(`/school/messages/?user_id=${chatUserId}`);
+                if (Array.isArray(res.data)) setChatMessages(res.data);
             } catch (error) {
                 console.error("Sohbet detayları çekilemedi:", error);
             }
@@ -80,26 +69,11 @@ export default function Messages() {
         e.preventDefault();
         if (!content.trim() || !chatUserId) return;
         
-        const token = localStorage.getItem('access');
         try {
-            const res = await fetch('http://localhost:8000/api/school/messages/', {
-                method: 'POST',
-                headers: { 
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ receiver: chatUserId, content })
-            });
-            if (res.ok) {
-                setContent('');
-                const chatRes = await fetch(`http://localhost:8000/api/school/messages/?user_id=${chatUserId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (chatRes.ok) {
-                    const chatData = await chatRes.json();
-                    if (Array.isArray(chatData)) setChatMessages(chatData);
-                }
-            }
+            await api.post('/school/messages/', { receiver: chatUserId, content });
+            setContent('');
+            const chatRes = await api.get(`/school/messages/?user_id=${chatUserId}`);
+            if (Array.isArray(chatRes.data)) setChatMessages(chatRes.data);
         } catch (error) {
             console.error("Mesaj gönderilemedi:", error);
         }

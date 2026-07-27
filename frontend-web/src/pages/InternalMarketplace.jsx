@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function InternalMarketplace() {
     const navigate = useNavigate();
@@ -7,15 +8,9 @@ export default function InternalMarketplace() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const token = localStorage.getItem('access');
-        fetch('http://localhost:8000/api/accounts/teachers/', {
-            headers: {
-                'Authorization': `Bearer ${token}` // Sisteme giriş yapıldığı için token gönderiyoruz
-            }
-        })
-            .then(res => res.json())
-            .then(data => {
-                setTeachers(data);
+        api.get('/accounts/teachers/')
+            .then(res => {
+                setTeachers(res.data);
                 setLoading(false);
             })
             .catch(err => {
