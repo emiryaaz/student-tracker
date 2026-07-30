@@ -61,7 +61,11 @@ class ProfileViewSet(viewsets.ViewSet):
         user = request.user
         
         if user.role == 'TEACHER':
-            students = StudentProfile.objects.filter(enrollments__teacher__user=user).distinct()
+            # DÜZELTME: Burada yanlışlıkla kullanılmayan 'education' app'indeki Enrollment
+            # tablosu sorgulanıyordu (enrollments__teacher__user), o tablo hiçbir yerde
+            # doldurulmadığı için bu her zaman boş dönerdi. Gerçek öğretmen-öğrenci bağlantısı
+            # school.TutoringRelation'da tutuluyor (related_name='tutors_list').
+            students = StudentProfile.objects.filter(tutors_list__tutor__user=user, tutors_list__is_active=True).distinct()
             serializer = StudentProfileSerializer(students, many=True)
             return Response(serializer.data)
             
