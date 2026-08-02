@@ -14,6 +14,15 @@ export default function TeacherProfile() {
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [note, setNote] = useState('');
 
+    const [reviews, setReviews] = useState([]);
+    const [newRating, setNewRating] = useState(5);
+    const [newComment, setNewComment] = useState('');
+    const [reviewSubmitting, setReviewSubmitting] = useState(false);
+    const [reviewError, setReviewError] = useState('');
+
+    const myId = user?.user?.id || user?.user_id || user?.id;
+    const myReview = reviews.find(r => Number(r.reviewer) === Number(myId));
+
     useEffect(() => {
         // Öğretmenin detay bilgilerini çeken endpoint (herkese açık)
         api.get(`/accounts/teachers/${id}/`)
@@ -26,6 +35,38 @@ export default function TeacherProfile() {
                 setLoading(false);
             });
     }, [id]);
+
+    const fetchReviews = () => {
+        api.get(`/school/reviews/?teacher_id=${id}`)
+            .then(res => setReviews(res.data))
+            .catch(err => console.error("Değerlendirmeler çekilemedi:", err));
+    };
+
+    useEffect(() => {
+        fetchReviews();
+    }, [id]);
+
+    const handleReviewSubmit = async (e) => {
+        e.preventDefault();
+        setReviewSubmitting(true);
+        setReviewError('');
+        try {
+            if (myReview) {
+                // Zaten bir değerlendirmesi varsa güncelle
+                await api.patch(`/school/reviews/${myReview.id}/`, { rating: newRating, comment: newComment });
+            } else {
+                await api.post('/school/reviews/', { teacher: id, rating: newRating, comment: newComment });
+            }
+            setNewComment('');
+            fetchReviews();
+            // Ortalama puan/adet teacher objesinde de değişmiş olabilir, onu da tazeleyelim
+            api.get(`/accounts/teachers/${id}/`).then(res => setTeacher(res.data));
+        } catch (error) {
+            setReviewError(error.response?.data?.detail || 'Değerlendirme gönderilemedi.');
+        } finally {
+            setReviewSubmitting(false);
+        }
+    };
 
     const handleContactClick = () => {
         const token = localStorage.getItem('access'); // Ekstra güvenlik için token kontrolü
@@ -124,6 +165,13 @@ export default function TeacherProfile() {
                                         {teacher.is_verified && <span className="text-blue-500 text-xl" title="Doğrulanmış Eğitmen">✔</span>}
                                     </h1>
                                     <p className="text-lg text-blue-600 font-medium">{teacher.title || 'Uzman Eğitmen'}</p>
+                                    {teacher.average_rating ? (
+                                        <p className="text-sm text-yellow-600 font-semibold mt-1">
+                                            ⭐ {teacher.average_rating} <span className="text-gray-400 font-normal">({teacher.review_count} değerlendirme)</span>
+                                        </p>
+                                    ) : (
+                                        <p className="text-sm text-gray-400 mt-1">Henüz değerlendirme yok</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -173,6 +221,61 @@ export default function TeacherProfile() {
                             </div>
                         </div>
                     </div>
+                </div>
+             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 mt-6">
+                    <h2 className="text-xl font-bold text-gray-900 mb-6">Öğrenci Değerlendirmeleri</h2>
+
+                    {reviews.length === 0 ? (
+                        <p className="text-gray-500 mb-6">Bu eğitmen için henüz bir değerlendirme yapılmamış.</p>
+                    ) : (
+                        <div className="space-y-4 mb-8">
+                            {reviews.map(r => (
+                                <div key={r.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="font-bold text-gray-800">{r.reviewer_name || 'Öğrenci'}</span>
+                                        <span className="text-yellow-500 font-semibold">{'⭐'.repeat(r.rating)}</span>
+                                    </div>
+                                    <p className="text-gray-600 text-sm">{r.comment}</p>
+                                    <p className="text-xs text-gray-400 mt-1">{new Date(r.created_at).toLocaleDateString('tr-TR')}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {user?.role === 'STUDENT' || user?.user?.role === 'STUDENT' ? (
+                        <form onSubmit={handleReviewSubmit} className="border-t border-gray-100 pt-6">
+                            <h3 className="font-bold text-gray-800 mb-3">{myReview ? 'Değerlendirmeni Güncelle' : 'Bu Eğitmeni Değerlendir'}</h3>
+                            <div className="flex items-center gap-2 mb-3">
+                                {[1, 2, 3, 4, 5].map(star => (
+                                    <button
+                                        type="button"
+                                        key={star}
+                                        onClick={() => setNewRating(star)}
+                                        className={`text-2xl ${star <= newRating ? 'text-yellow-500' : 'text-gray-300'}`}
+                                    >
+                                        ★
+                                    </button>
+                                ))}
+                            </div>
+                            <textarea
+                                required
+                                value={newComment}
+                                onChange={(e) => setNewComment(e.target.value)}
+                                placeholder="Deneyiminizi paylaşın..."
+                                className="w-full border border-gray-300 rounded-xl p-4 focus:outline-none focus:border-teal-500 h-24 resize-none mb-3"
+                            />
+                            {reviewError && <p className="text-red-600 text-sm mb-3">{reviewError}</p>}
+                            <button
+                                type="submit"
+                                disabled={reviewSubmitting}
+                                className="bg-teal-600 hover:bg-teal-700 text-white font-bold px-6 py-3 rounded-xl transition disabled:opacity-50"
+                            >
+                                {reviewSubmitting ? 'Gönderiliyor...' : (myReview ? 'Güncelle' : 'Değerlendirmeyi Gönder')}
+                            </button>
+                        </form>
+                    ) : (
+                        <p className="text-gray-400 text-sm border-t border-gray-100 pt-6">Değerlendirme bırakmak için ders aldığınız bir öğretmene öğrenci hesabınızla giriş yapmalısınız.</p>
+                    )}
                 </div>
             </div>
 

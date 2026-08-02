@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent
+from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent, TeacherReview
 from accounts.models import StudentProfile
 
 # Dersi ve sınıf seviyesini paketler
@@ -69,3 +69,11 @@ class CalendarEventSerializer(serializers.ModelSerializer):
     class Meta:
         model = CalendarEvent
         fields = '__all__'
+
+class TeacherReviewSerializer(serializers.ModelSerializer):
+    reviewer_name = serializers.CharField(source='reviewer.first_name', read_only=True)
+
+    class Meta:
+        model = TeacherReview
+        fields = ('id', 'teacher', 'reviewer', 'reviewer_name', 'rating', 'comment', 'created_at')
+        read_only_fields = ('reviewer',)

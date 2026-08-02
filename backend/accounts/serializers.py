@@ -12,11 +12,22 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='user.last_name', read_only=True)
     email = serializers.EmailField(source='user.email', read_only=True)
     role = serializers.CharField(source='user.role', read_only=True)
+    average_rating = serializers.SerializerMethodField()
+    review_count = serializers.SerializerMethodField()
+
+    def get_average_rating(self, obj):
+        reviews = obj.reviews.all()
+        if not reviews:
+            return None
+        return round(sum(r.rating for r in reviews) / reviews.count(), 1)
+
+    def get_review_count(self, obj):
+        return obj.reviews.count()
 
     class Meta:
         model = TeacherProfile
         # 'role' verisini de React'e gönderiyoruz:
-        fields = ('id','user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified')
+        fields = ('id','user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified', 'average_rating', 'review_count')
         
 class ChildSummarySerializer(serializers.ModelSerializer):
     """Veli panelinde bağlı öğrencileri listelemek için hafif serializer (StudentProfileSerializer'ı

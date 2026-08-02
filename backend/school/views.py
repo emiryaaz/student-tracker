@@ -1,8 +1,9 @@
 from rest_framework import viewsets, permissions, generics
 from rest_framework.exceptions import PermissionDenied
-from .models import TutoringRelation, Assignment, ExamResult, Resource, Message
+from .models import TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent, TeacherReview
 from .serializers import (TutoringRelationSerializer, AssignmentSerializer,
-                          ExamResultSerializer, ResourceSerializer, MessageSerializer)
+                          ExamResultSerializer, ResourceSerializer, MessageSerializer,MatchRequestSerializer,
+                           CalendarEventSerializer, TeacherReviewSerializer)
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
@@ -10,9 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
-from .models import MatchRequest, CalendarEvent
 from accounts.models import TeacherProfile, StudentProfile
-from .serializers import MatchRequestSerializer, CalendarEventSerializer
 
 class TeacherStudentsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TutoringRelationSerializer
@@ -197,3 +196,37 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
         if self.request.user.role != 'TEACHER':
             raise PermissionDenied("Takvim etkinliğini yalnızca öğretmenler oluşturabilir.")
         serializer.save(creator=self.request.user)
+
+class TeacherReviewViewSet(viewsets.ModelViewSet):
+    """Öğretmen değerlendirmeleri: herkes (giriş yapmasa bile) okuyabilir; sadece o
+    öğretmenden gerçekten ders almış (TutoringRelation'ı olan) bir öğrenci yorum/puan
+    bırakabilir; herkes yalnızca kendi yorumunu düzenleyebilir/silebilir."""
+    serializer_class = TeacherReviewSerializer
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+    def get_queryset(self):
+        qs = TeacherReview.objects.all().order_by('-created_at')
+        teacher_id = self.request.query_params.get('teacher_id')
+        if teacher_id:
+            qs = qs.filter(teacher_id=teacher_id)
+        return qs
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        if user.role != 'STUDENT':
+            raise PermissionDenied("Yalnızca öğrenciler değerlendirme bırakabilir.")
+        teacher = serializer.validated_data.get('teacher')
+        has_relation = TutoringRelation.objects.filter(tutor=teacher, student__user=user).exists()
+        if not has_relation:
+            raise PermissionDenied("Yalnızca ders aldığınız öğretmenleri değerlendirebilirsiniz.")
+        serializer.save(reviewer=user)
+
+    def perform_update(self, serializer):
+        if serializer.instance.reviewer != self.request.user:
+            raise PermissionDenied("Yalnızca kendi değerlendirmenizi düzenleyebilirsiniz.")
+        serializer.save()
+
+    def perform_destroy(self, instance):
+        if instance.reviewer != self.request.user:
+            raise PermissionDenied("Yalnızca kendi değerlendirmenizi silebilirsiniz.")
+        instance.delete()
