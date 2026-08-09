@@ -41,4 +41,95 @@
         font-family: var(--font-display);
         letter-spacing: -0.01em;
     }
+
+    /* ROL PALETLERİ: her panel sadece bu değişkenleri set eden bir wrapper class'ı giyer
+       (role-teacher / role-student / role-parent). Bileşen class'larının hiçbiri renk
+       kodu içermez, hepsi bu değişkenleri okur — böylece tüm paneller tipografi/boyut/
+       yapı olarak birebir aynı kalır, tek fark aksan rengi olur. */
+    .role-teacher {
+        --role-accent: var(--color-teacher-600);
+        --role-accent-hover: var(--color-teacher-700);
+        --role-accent-soft: color-mix(in srgb, var(--color-teacher-500) 12%, white);
+        --role-text-accent: var(--color-teacher-700);
+    }
+    .role-student {
+        --role-accent: var(--color-student-600);
+        --role-accent-hover: var(--color-student-700);
+        --role-accent-soft: color-mix(in srgb, var(--color-student-500) 12%, white);
+        --role-text-accent: var(--color-student-700);
+    }
+    .role-parent {
+        --role-accent: var(--color-parent-600);
+        --role-accent-hover: var(--color-parent-700);
+        --role-accent-soft: color-mix(in srgb, var(--color-parent-500) 12%, white);
+        --role-text-accent: var(--color-parent-700);
+    }
+}
+
+@layer components {
+    /* SIDEBAR — üç panelde de birebir aynı yapı, rengi sadece role-* wrapper'ından alır */
+    .app-sidebar {
+        width: 16rem;
+        background-color: var(--color-ink-800);
+        color: white;
+        display: flex;
+        flex-direction: column;
+    }
+    .app-sidebar-logo {
+        padding: 1.5rem;
+        border-bottom: 1px solid var(--color-ink-600);
+    }
+    .app-sidebar-logo-text {
+        font-family: var(--font-display);
+        font-weight: 800;
+        font-size: 1.25rem;
+        letter-spacing: -0.01em;
+        color: white;
+    }
+    .app-sidebar-logo-accent { color: var(--role-accent); }
+    .app-sidebar-subtitle {
+        font-size: 0.75rem;
+        color: var(--color-ink-500);
+        margin-top: 0.125rem;
+    }
+
+    /* NAV BUTONLARI — Mesajlarım / Takvim / sekmeler artık hepsi bu tek class'ı kullanır */
+    .app-nav-btn {
+        width: 100%;
+        text-align: left;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        font-family: var(--font-sans);
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: white;
+        transition: background-color 0.15s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .app-nav-btn:hover { background-color: var(--color-ink-700); }
+    .app-nav-btn-active {
+        background-color: var(--role-accent);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .app-nav-btn-active:hover { background-color: var(--role-accent); }
+
+    /* KARTLAR */
+    .app-card {
+        background-color: white;
+        border-radius: 0.75rem;
+        border: 1px solid #F3F4F6;
+        padding: 1.5rem;
+    }
+
+    /* BİRİNCİL BUTON (kaydet/gönder gibi ana aksiyonlar) */
+    .app-btn-primary {
+        background-color: var(--role-accent);
+        color: white;
+        font-weight: 700;
+        border-radius: 0.5rem;
+        transition: background-color 0.15s ease;
+    }
+    .app-btn-primary:hover { background-color: var(--role-accent-hover); }
 }

@@ -1,6 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import api from '../services/api';
 
 export default function TeacherDashboard() {
     const { user, logout } = useContext(AuthContext);
@@ -26,17 +27,11 @@ export default function TeacherDashboard() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [requests, setRequests] = useState([]);
 
-    // VERİ ÇEKME FONKSİYONLARI
+    // VERİ ÇEKME FONKSİYONLARI (artık api.js üzerinden; token otomatik eklenir ve süresi dolarsa otomatik yenilenir)
     const fetchData = async (endpoint, setter) => {
         try {
-            const token = localStorage.getItem('access');
-            const response = await fetch(`http://localhost:8000/api/school/${endpoint}/`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setter(data);
-            }
+            const response = await api.get(`/school/${endpoint}/`);
+            setter(response.data);
         } catch (error) {
             console.error(`${endpoint} çekilemedi:`, error);
         }
@@ -45,14 +40,8 @@ export default function TeacherDashboard() {
     // YENİ: PROFIL VERİSİNİ ÇEKME FONKSİYONU
     const fetchProfile = async () => {
         try {
-            const token = localStorage.getItem('access');
-            const response = await fetch('http://localhost:8000/api/accounts/profile/me/', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setProfileData(data);
-            }
+            const response = await api.get('/accounts/profile/me/');
+            setProfileData(response.data);
         } catch (error) {
             console.error('Profil çekilemedi:', error);
         }
@@ -80,6 +69,22 @@ export default function TeacherDashboard() {
         return r ? `${r.student.first_name} ${r.student.last_name}` : 'Öğrenci';
     };
 
+    // Ödev/Sınav/Kaynak listelerini öğrenciye göre gruplamak için ortak yardımcı fonksiyon
+    const groupByStudent = (items) => {
+        const groups = {};
+        items.forEach(item => {
+            const relId = item.relation;
+            if (!groups[relId]) {
+                groups[relId] = { relationId: relId, studentName: getStudentName(relId), items: [] };
+            }
+            groups[relId].items.push(item);
+        });
+        return Object.values(groups).sort((a, b) => a.studentName.localeCompare(b.studentName, 'tr'));
+    };
+
+    const [collapsedGroups, setCollapsedGroups] = useState({});
+    const toggleGroup = (relId) => setCollapsedGroups(prev => ({ ...prev, [relId]: !prev[relId] }));
+
     const openModal = (type, relationId, studentFirst, studentLast) => {
         setSelectedRelation(relationId);
         setSelectedStudentName(`${studentFirst} ${studentLast}`);
@@ -90,26 +95,14 @@ export default function TeacherDashboard() {
     const handleSubmit = async (e, endpoint, payload, refreshSetter, resetForm) => {
         e.preventDefault();
         try {
-            const token = localStorage.getItem('access');
-            const response = await fetch(`http://localhost:8000/api/school/${endpoint}/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ relation: selectedRelation, ...payload })
-            });
-
-            if (response.ok) {
-                alert("İşlem başarıyla kaydedildi!");
-                setActiveModal(null);
-                resetForm();
-                fetchData(endpoint, refreshSetter);
-            } else {
-                alert("Bir hata oluştu. Lütfen bilgileri kontrol edin.");
-            }
+            await api.post(`/school/${endpoint}/`, { relation: selectedRelation, ...payload });
+            alert("İşlem başarıyla kaydedildi!");
+            setActiveModal(null);
+            resetForm();
+            fetchData(endpoint, refreshSetter);
         } catch (error) {
             console.error("Gönderilemedi:", error);
+            alert("Bir hata oluştu. Lütfen bilgileri kontrol edin.");
         }
     };
 
@@ -128,37 +121,24 @@ export default function TeacherDashboard() {
         }
 
         try {
-            const token = localStorage.getItem('access');
-            const res = await fetch('http://localhost:8000/api/accounts/profile/me/', {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` },
-                body: formData // JSON değil, FormData gönderiyoruz
-            });
-
-            if (res.ok) {
-                alert("Profiliniz başarıyla güncellendi!");
-                fetchProfile(); // Ekrandaki veriyi güncelle
-            } else {
-                alert("Güncelleme başarısız oldu. Lütfen tekrar deneyin.");
-            }
+            // ÖNEMLİ: Content-Type header'ını burada elle set ETMİYORUZ.
+            // FormData gönderirken tarayıcı/axios boundary değerini kendisi otomatik ekler;
+            // 'multipart/form-data' header'ını elle vermek boundary'siz bıraktığı için
+            // backend formu parse edemez ve profil fotoğrafı yükleme isteği bozulur.
+            await api.patch('/accounts/profile/me/', formData);
+            alert("Profiliniz başarıyla güncellendi!");
+            fetchProfile(); // Ekrandaki veriyi güncelle
         } catch (error) {
             console.error("Sunucu hatası:", error);
+            alert("Güncelleme başarısız oldu. Lütfen tekrar deneyin.");
         }
     };
 
     useEffect(() => {
         const fetchUnreadCount = async () => {
-            const token = localStorage.getItem('access');
-            if (!token) return;
-
             try {
-                const res = await fetch('http://localhost:8000/api/school/messages/unread-count/', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setUnreadCount(data.unread_count);
-                }
+                const response = await api.get('/school/messages/unread-count/');
+                setUnreadCount(response.data.unread_count);
             } catch (error) {
                 console.error("Bildirimler çekilemedi", error);
             }
@@ -172,17 +152,9 @@ export default function TeacherDashboard() {
 
     useEffect(() => {
         const fetchRequests = async () => {
-            const token = localStorage.getItem('access');
-            if (!token) return;
-
             try {
-                const res = await fetch('http://localhost:8000/api/school/match-requests/', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    setRequests(data);
-                }
+                const response = await api.get('/school/match-requests/');
+                setRequests(response.data);
             } catch (error) {
                 console.error("Talepler çekilemedi", error);
             }
@@ -192,24 +164,12 @@ export default function TeacherDashboard() {
     }, []);
 
     const handleRespond = async (id, status) => {
-        const token = localStorage.getItem('access');
-
         try {
-            const res = await fetch(`http://localhost:8000/api/school/match-requests/${id}/respond/`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ status: status })
-            });
-
-            if (res.ok) {
-                // Ekranda güncellenmiş durumu anında göstermek için listeyi filtrele veya güncelle
-                setRequests(requests.map(req =>
-                    req.id === id ? { ...req, status: status } : req
-                ));
-            }
+            await api.patch(`/school/match-requests/${id}/respond/`, { status: status });
+            // Ekranda güncellenmiş durumu anında göstermek için listeyi filtrele veya güncelle
+            setRequests(requests.map(req =>
+                req.id === id ? { ...req, status: status } : req
+            ));
         } catch (error) {
             console.error("Yanıt gönderilemedi", error);
         }
@@ -218,12 +178,15 @@ export default function TeacherDashboard() {
     return (
         <div className="flex h-screen bg-gray-100 relative">
             {/* SOL MENÜ */}
-            <div className="w-64 bg-blue-800 text-white flex flex-col">
-                <div className="p-6 text-2xl font-bold border-b border-blue-700">EduTracker</div>
+            <div className="w-64 bg-ink-800 text-white flex flex-col">
+                <div className="p-6 border-b border-ink-600">
+                    <span className="font-display text-xl font-extrabold tracking-tight text-white">Edu<span className="text-teacher-400">Tracker</span></span>
+                    <p className="text-xs text-ink-500 mt-0.5">Öğretmen Paneli</p>
+                </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     <button
                         onClick={() => navigate('/messages')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between mt-2 mb-4"
+                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between mt-2"
                     >
                         <span className="font-bold">Mesajlarım
                             {unreadCount > 0 && (
@@ -250,13 +213,13 @@ export default function TeacherDashboard() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`w-full text-left px-4 py-3 rounded transition ${activeTab === tab.id ? 'bg-blue-600 shadow' : 'hover:bg-blue-700'}`}
+                            className={`w-full text-left px-4 py-3 rounded transition ${activeTab === tab.id ? 'bg-teacher-600 shadow' : 'hover:bg-ink-700'}`}
                         >
                             {tab.label}
                         </button>
                     ))}
                 </nav>
-                <div className="p-4 border-t border-blue-700">
+                <div className="p-4 border-t border-ink-600">
                     <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
                 </div>
             </div>
@@ -269,30 +232,30 @@ export default function TeacherDashboard() {
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teacher-600"></div>
                     </div>
                 ) : (
                     <>
                         {/* PROFIL SEKRESİ */}
                         {activeTab === 'profile' && (
-                            <div className="bg-white p-8 rounded-lg shadow-sm max-w-3xl">
+                            <div className="bg-white p-8 rounded-xl border border-gray-100 max-w-3xl">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
 
                                 <form onSubmit={handleProfileSubmit}>
                                     <div className="space-y-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Uzmanlık Ünvanı</label>
-                                            <input name="title" defaultValue={profileData?.title || ''} type="text" placeholder="Örn: Kıdemli Matematik Öğretmeni" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
+                                            <input name="title" defaultValue={profileData?.title || ''} type="text" placeholder="Örn: Kıdemli Matematik Öğretmeni" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-teacher-500" />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Saatlik Ders Ücreti (₺)</label>
-                                            <input name="hourly_rate" defaultValue={profileData?.hourly_rate || ''} type="number" step="0.01" placeholder="Örn: 500" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500" />
+                                            <input name="hourly_rate" defaultValue={profileData?.hourly_rate || ''} type="number" step="0.01" placeholder="Örn: 500" className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-teacher-500" />
                                         </div>
 
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Hakkımda</label>
-                                            <textarea name="bio" rows="4" defaultValue={profileData?.bio || ''} placeholder="Geçmişinizden, eğitim tarzınızdan bahsedin..." className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-blue-500"></textarea>
+                                            <textarea name="bio" rows="4" defaultValue={profileData?.bio || ''} placeholder="Geçmişinizden, eğitim tarzınızdan bahsedin..." className="w-full border border-gray-300 p-2 rounded focus:outline-none focus:border-teacher-500"></textarea>
                                         </div>
 
                                         <div>
@@ -305,7 +268,7 @@ export default function TeacherDashboard() {
                                             <input name="profile_picture" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
                                         </div>
 
-                                        <button type="submit" className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition mt-4">
+                                        <button type="submit" className="w-full bg-teacher-600 text-white font-bold py-3 rounded-lg hover:bg-ink-700 transition mt-4">
                                             Profili ve Vitrini Kaydet
                                         </button>
                                     </div>
@@ -330,7 +293,7 @@ export default function TeacherDashboard() {
                                         <h3 className="text-gray-500 text-sm font-bold uppercase">Girilen Notlar</h3>
                                         <p className="text-3xl font-bold text-gray-800 mt-1">{examsData.length}</p>
                                     </div>
-                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-teacher-500">
                                         <h3 className="text-gray-500 text-sm font-bold uppercase">Materyaller</h3>
                                         <p className="text-3xl font-bold text-gray-800 mt-1">{resourcesData.length}</p>
                                     </div>
@@ -339,7 +302,7 @@ export default function TeacherDashboard() {
                                 {/* Alt Kısım: Gelen Ders Talepleri */}
                                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                        📥 Gelen Ders Talepleri
+                                        Gelen Ders Talepleri
                                     </h2>
                                     
                                     {requests.length === 0 ? (
@@ -356,9 +319,9 @@ export default function TeacherDashboard() {
                                                         <h4 className="font-bold text-gray-900 text-lg">
                                                             {req.student_name}
                                                         </h4>
-                                                        <div className="bg-blue-50/50 p-3 rounded-lg mt-2 border border-blue-100/50">
+                                                        <div className="bg-amber-50/50 p-3 rounded-lg mt-2 border border-amber-100/50">
                                                             <p className="text-sm text-gray-700">
-                                                                <span className="font-semibold text-blue-800">Not: </span> 
+                                                                <span className="font-semibold text-teacher-700">Not: </span> 
                                                                 {req.note ? req.note : <span className="italic text-gray-400">Not eklenmemiş.</span>}
                                                             </p>
                                                         </div>
@@ -404,7 +367,7 @@ export default function TeacherDashboard() {
 
                         {/* ÖĞRENCİLERİM SEKMESİ */}
                         {activeTab === 'students' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="bg-white p-6 rounded-xl border border-gray-100">
                                 <h2 className="text-xl font-bold mb-6">Öğrenci Listesi</h2>
                                 <div className="overflow-hidden rounded-lg border border-gray-200">
                                     <table className="w-full text-left border-collapse">
@@ -417,13 +380,13 @@ export default function TeacherDashboard() {
                                         </thead>
                                         <tbody className="divide-y divide-gray-200">
                                             {studentsData.map((rel) => (
-                                                <tr key={rel.id} className="hover:bg-blue-50 transition">
+                                                <tr key={rel.id} className="hover:bg-amber-50 transition">
                                                     <td className="p-4 font-medium">{rel.student.first_name} {rel.student.last_name}</td>
                                                     <td className="p-4 text-sm">{rel.subject ? `${rel.subject.grade_level}. Sınıf - ${rel.subject.name}` : 'Ders belirtilmemiş'}</td>
                                                     <td className="p-4 text-right space-x-2">
                                                         <button onClick={() => openModal('task', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1.5 rounded text-sm">+ Ödev</button>
                                                         <button onClick={() => openModal('exam', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-sm">+ Not</button>
-                                                        <button onClick={() => openModal('resource', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-sm">+ Kaynak</button>
+                                                        <button onClick={() => openModal('resource', rel.id, rel.student.first_name, rel.student.last_name)} className="bg-teacher-600 hover:bg-ink-700 text-white px-3 py-1.5 rounded text-sm">+ Kaynak</button>
                                                     </td>
                                                 </tr>
                                             ))}
@@ -433,61 +396,124 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* ÖDEV TAKİBİ */}
+                        {/* ÖDEV TAKİBİ (öğrenciye göre gruplu) */}
                         {activeTab === 'assignments' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="bg-white p-6 rounded-xl border border-gray-100">
                                 <h2 className="text-xl font-bold mb-6">Verilen Ödevler</h2>
-                                <ul className="divide-y">
-                                    {assignmentsData.map(a => (
-                                        <li key={a.id} className="py-3 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-gray-800">{a.title}</p>
-                                                <p className="text-sm text-gray-500">{getStudentName(a.relation)} - {new Date(a.due_date).toLocaleDateString()}</p>
+                                {assignmentsData.length === 0 ? (
+                                    <p className="text-gray-500">Henüz verilmiş bir ödev yok.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {groupByStudent(assignmentsData).map(group => (
+                                            <div key={group.relationId} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <button
+                                                    onClick={() => toggleGroup(group.relationId)}
+                                                    className="w-full flex justify-between items-center bg-gray-50 px-4 py-3 hover:bg-gray-100 transition"
+                                                >
+                                                    <span className="font-bold text-gray-800">{group.studentName}</span>
+                                                    <span className="text-xs text-gray-500 flex items-center gap-2">
+                                                        {group.items.length} ödev
+                                                        <span className={`transition-transform ${collapsedGroups[group.relationId] ? '' : 'rotate-180'}`}>▾</span>
+                                                    </span>
+                                                </button>
+                                                {!collapsedGroups[group.relationId] && (
+                                                    <ul className="divide-y">
+                                                        {group.items.map(a => (
+                                                            <li key={a.id} className="py-3 px-4 flex justify-between items-center">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800">{a.title}</p>
+                                                                    <p className="text-sm text-gray-500">Son Teslim: {new Date(a.due_date).toLocaleDateString()}</p>
+                                                                </div>
+                                                                <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                    {a.status}
+                                                                </span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                {a.status}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* SINAV NOTLARI SEKMESİ */}
+                        {/* SINAV NOTLARI SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'exams' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="bg-white p-6 rounded-xl border border-gray-100">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Sonuçları</h2>
-                                <ul className="divide-y">
-                                    {examsData.map(e => (
-                                        <li key={e.id} className="py-3 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-gray-800">{e.exam_name}</p>
-                                                <p className="text-sm text-gray-500">{getStudentName(e.relation)} - {new Date(e.exam_date).toLocaleDateString()}</p>
+                                {examsData.length === 0 ? (
+                                    <p className="text-gray-500">Henüz girilmiş bir sınav notu yok.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {groupByStudent(examsData).map(group => (
+                                            <div key={group.relationId} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <button
+                                                    onClick={() => toggleGroup(group.relationId)}
+                                                    className="w-full flex justify-between items-center bg-gray-50 px-4 py-3 hover:bg-gray-100 transition"
+                                                >
+                                                    <span className="font-bold text-gray-800">{group.studentName}</span>
+                                                    <span className="text-xs text-gray-500 flex items-center gap-2">
+                                                        {group.items.length} sınav
+                                                        <span className={`transition-transform ${collapsedGroups[group.relationId] ? '' : 'rotate-180'}`}>▾</span>
+                                                    </span>
+                                                </button>
+                                                {!collapsedGroups[group.relationId] && (
+                                                    <ul className="divide-y">
+                                                        {group.items.map(e => (
+                                                            <li key={e.id} className="py-3 px-4 flex justify-between items-center">
+                                                                <div>
+                                                                    <p className="font-bold text-gray-800">{e.exam_name}</p>
+                                                                    <p className="text-sm text-gray-500">{new Date(e.exam_date).toLocaleDateString()}</p>
+                                                                </div>
+                                                                <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-bold">Puan: {e.score}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
-                                            <span className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full font-bold">Puan: {e.score}</span>
-                                        </li>
-                                    ))}
-                                </ul>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* KAYNAKLAR SEKMESİ */}
+                        {/* KAYNAKLAR SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'resources' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="bg-white p-6 rounded-xl border border-gray-100">
                                 <h2 className="text-xl font-bold mb-6">Paylaşılan Materyaller</h2>
-                                <ul className="divide-y">
-                                    {resourcesData.map(r => (
-                                        <li key={r.id} className="py-3 flex justify-between items-center">
-                                            <div>
-                                                <p className="font-bold text-gray-800">{r.title}</p>
-                                                <p className="text-sm text-gray-500">Öğrenci: {getStudentName(r.relation)}</p>
+                                {resourcesData.length === 0 ? (
+                                    <p className="text-gray-500">Henüz paylaşılmış bir materyal yok.</p>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {groupByStudent(resourcesData).map(group => (
+                                            <div key={group.relationId} className="border border-gray-200 rounded-lg overflow-hidden">
+                                                <button
+                                                    onClick={() => toggleGroup(group.relationId)}
+                                                    className="w-full flex justify-between items-center bg-gray-50 px-4 py-3 hover:bg-gray-100 transition"
+                                                >
+                                                    <span className="font-bold text-gray-800">{group.studentName}</span>
+                                                    <span className="text-xs text-gray-500 flex items-center gap-2">
+                                                        {group.items.length} kaynak
+                                                        <span className={`transition-transform ${collapsedGroups[group.relationId] ? '' : 'rotate-180'}`}>▾</span>
+                                                    </span>
+                                                </button>
+                                                {!collapsedGroups[group.relationId] && (
+                                                    <ul className="divide-y">
+                                                        {group.items.map(r => (
+                                                            <li key={r.id} className="py-3 px-4 flex justify-between items-center">
+                                                                <p className="font-bold text-gray-800">{r.title}</p>
+                                                                {r.url && (
+                                                                    <a href={r.url} target="_blank" rel="noreferrer" className="text-teacher-700 hover:underline text-sm font-semibold">Linki Aç ↗</a>
+                                                                )}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
                                             </div>
-                                            {r.url && (
-                                                <a href={r.url} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline text-sm font-semibold">Linki Aç ↗</a>
-                                            )}
-                                        </li>
-                                    ))}
-                                </ul>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </>
@@ -504,7 +530,7 @@ export default function TeacherDashboard() {
                                 {activeModal === 'exam' && 'Sınav Notu Gir'}
                                 {activeModal === 'resource' && 'Kaynak Paylaş'}
                             </h2>
-                            <p className="text-gray-600">Öğrenci: <span className="font-semibold text-blue-600">{selectedStudentName}</span></p>
+                            <p className="text-gray-600">Öğrenci: <span className="font-semibold text-teacher-700">{selectedStudentName}</span></p>
                         </div>
 
                         {/* ÖDEV FORMU */}
@@ -513,7 +539,7 @@ export default function TeacherDashboard() {
                                 <input type="text" required placeholder="Ödev Başlığı" className="w-full border p-2 rounded" value={taskData.title} onChange={e => setTaskData({ ...taskData, title: e.target.value })} />
                                 <textarea placeholder="Açıklama" className="w-full border p-2 rounded" value={taskData.description} onChange={e => setTaskData({ ...taskData, description: e.target.value })}></textarea>
                                 <input type="datetime-local" required className="w-full border p-2 rounded" value={taskData.due_date} onChange={e => setTaskData({ ...taskData, due_date: e.target.value })} />
-                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Gönder</button></div>
+                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-teacher-600 text-white rounded">Gönder</button></div>
                             </form>
                         )}
 
@@ -533,7 +559,7 @@ export default function TeacherDashboard() {
                             <form onSubmit={(e) => handleSubmit(e, 'resources', resourceData, setResourcesData, () => setResourceData({ title: '', url: '' }))} className="space-y-4">
                                 <input type="text" required placeholder="Kaynak Başlığı (Örn: Türev PDF)" className="w-full border p-2 rounded" value={resourceData.title} onChange={e => setResourceData({ ...resourceData, title: e.target.value })} />
                                 <input type="url" placeholder="Link/URL (Opsiyonel)" className="w-full border p-2 rounded" value={resourceData.url} onChange={e => setResourceData({ ...resourceData, url: e.target.value })} />
-                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded">Paylaş</button></div>
+                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-teacher-600 text-white rounded">Paylaş</button></div>
                             </form>
                         )}
                     </div>
