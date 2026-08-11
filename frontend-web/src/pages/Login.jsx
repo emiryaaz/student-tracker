@@ -1,5 +1,5 @@
 import { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import { AuthContext } from '../context/AuthContext';
 
@@ -68,6 +68,11 @@ export default function Login() {
                         Giriş Yap
                     </button>
                 </form>
+                <div className="text-center mt-4">
+                    <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline">
+                        Şifremi unuttum
+                    </Link>
+                </div>
             </div>
         </div>
     );

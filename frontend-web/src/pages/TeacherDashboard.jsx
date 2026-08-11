@@ -472,8 +472,8 @@ export default function TeacherDashboard() {
                                                                     <p className="font-bold text-gray-800">{a.title}</p>
                                                                     <p className="text-sm text-gray-500">Son Teslim: {new Date(a.due_date).toLocaleDateString()}</p>
                                                                 </div>
-                                                                <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                                    {a.status}
+                                                                <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : a.is_late ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                    {a.status === 'COMPLETED' ? 'TAMAMLANDI' : a.is_late ? 'GECİKTİ' : 'BEKLİYOR'}
                                                                 </span>
                                                             </li>
                                                         ))}

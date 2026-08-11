@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User, TeacherProfile, StudentProfile, ParentProfile
+from .models import User, TeacherProfile, StudentProfile, ParentProfile, ParentLinkRequest
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -60,6 +60,17 @@ class StudentProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudentProfile
         fields = '__all__'
+
+class ParentLinkRequestSerializer(serializers.ModelSerializer):
+    parent_name = serializers.CharField(source='parent.user.get_full_name', read_only=True)
+    parent_email = serializers.EmailField(source='parent.user.email', read_only=True)
+    student_name = serializers.CharField(source='student.user.get_full_name', read_only=True)
+
+    class Meta:
+        model = ParentLinkRequest
+        fields = ('id', 'parent', 'parent_name', 'parent_email', 'student', 'student_name', 'status', 'created_at', 'updated_at')
+        read_only_fields = ('parent', 'student', 'status')
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=6, style={'input_type': 'password'})

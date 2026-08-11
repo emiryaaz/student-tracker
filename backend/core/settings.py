@@ -7,14 +7,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
+#
+# ÜRETİME ALIRKEN: aşağıdaki DJANGO_* ortam değişkenlerini deploy ortamınızda (docker-compose,
+# hosting paneli vb.) set edin. Hiçbiri set edilmezse davranış bugüne kadarki geliştirme
+# ayarlarıyla birebir aynı kalır — yani bu değişiklik mevcut docker-compose kurulumunuzu bozmaz.
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-snkoh*u(j6e15d^8kb^1blp$)5^ouz%fq7r+32^xp4q_ysfg86'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-snkoh*u(j6e15d^8kb^1blp$)5^ouz%fq7r+32^xp4q_ysfg86')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+_allowed_hosts_env = os.environ.get('DJANGO_ALLOWED_HOSTS')
+ALLOWED_HOSTS = _allowed_hosts_env.split(',') if _allowed_hosts_env else ['*']
 
 
 # Application definition
@@ -43,7 +48,9 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+# Sadece DEBUG modundayken tüm origin'lere izin ver; DJANGO_DEBUG=False set edildiği anda
+# (yani üretimde) otomatik olarak CORS_ALLOWED_ORIGINS listesine düşer.
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
@@ -141,9 +148,25 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
-CORS_ALLOWED_ORIGINS = [
+_cors_origins_env = os.environ.get('DJANGO_CORS_ALLOWED_ORIGINS')
+CORS_ALLOWED_ORIGINS = _cors_origins_env.split(',') if _cors_origins_env else [
     "http://localhost:5173",
 ]
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# E-POSTA (şifre sıfırlama linki için)
+# Geliştirmede varsayılan olarak 'console' backend kullanılır: gönderilen e-postanın
+# içeriği (sıfırlama linki dahil) `docker compose logs web` çıktısında görünür, gerçek
+# bir e-posta gönderilmez. Üretimde DJANGO_EMAIL_BACKEND ve SMTP ayarlarını env'den verin.
+EMAIL_BACKEND = os.environ.get('DJANGO_EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_HOST = os.environ.get('DJANGO_EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('DJANGO_EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('DJANGO_EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('DJANGO_EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('DJANGO_EMAIL_USE_TLS', 'True') == 'True'
+DEFAULT_FROM_EMAIL = os.environ.get('DJANGO_DEFAULT_FROM_EMAIL', 'EduTracker <no-reply@edutracker.local>')
+
+# Şifre sıfırlama linkinin işaret edeceği frontend adresi (React Router route'u)
+FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:5173')

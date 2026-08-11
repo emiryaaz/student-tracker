@@ -5,6 +5,8 @@ import { AuthContext } from './context/AuthContext';
 import LandingPage from './pages/LandingPage';
 import Register from './pages/Register';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import AdminDashboard from './pages/AdminDashboard';
 import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
@@ -49,6 +51,8 @@ function App() {
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password/:uidb64/:token" element={<ResetPassword />} />
                 <Route path="/teachers" element={<TeachersDirectory />} />
                 <Route path="/marketplace" element={<InternalMarketplace />} />
                 <Route path="/teacher/:id" element={<TeacherProfile />} />

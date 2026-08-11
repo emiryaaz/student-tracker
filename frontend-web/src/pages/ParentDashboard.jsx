@@ -25,6 +25,9 @@ export default function ParentDashboard() {
     const [childEmail, setChildEmail] = useState('');
     const [linking, setLinking] = useState(false);
     const [linkMessage, setLinkMessage] = useState({ type: '', text: '' });
+    // Gönderdiğimiz bağlantı talepleri (öğrenci onaylayana kadar 'Bağlı Öğrenciler'e düşmezler)
+    const [sentLinkRequests, setSentLinkRequests] = useState([]);
+    const [unlinkingId, setUnlinkingId] = useState(null);
 
     // Öğrenci panelinde yaptığımız gibi veli için de tüm verileri çekiyoruz
     const fetchAllData = async () => {
@@ -84,8 +87,18 @@ export default function ParentDashboard() {
         }
     };
 
+    const fetchSentLinkRequests = async () => {
+        try {
+            const response = await api.get('/accounts/link-requests/');
+            setSentLinkRequests(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error('Bağlantı talepleri çekilemedi:', error);
+        }
+    };
+
     useEffect(() => {
         fetchChildren();
+        fetchSentLinkRequests();
     }, []);
 
     const handleLinkChild = async (e) => {
@@ -93,15 +106,29 @@ export default function ParentDashboard() {
         setLinking(true);
         setLinkMessage({ type: '', text: '' });
         try {
-            const response = await api.post('/accounts/profiles/link_child/', { student_email: childEmail });
-            setChildren(response.data.children || []);
+            // ARTIK doğrudan bağlamıyor: öğrenciye bir bağlantı talebi gönderiyor, öğrenci
+            // kendi panelinden kabul edene kadar 'Bağlı Öğrenciler' listesine düşmüyor.
+            await api.post('/accounts/profiles/link_child/', { student_email: childEmail });
             setChildEmail('');
-            setLinkMessage({ type: 'success', text: 'Öğrenci başarıyla bağlandı.' });
-            fetchAllData(); // Yeni bağlanan öğrencinin ödev/sınav/kaynak verilerini de çek
+            setLinkMessage({ type: 'success', text: 'Bağlantı isteği gönderildi. Öğrencinin onaylamasını bekliyoruz.' });
+            fetchSentLinkRequests();
         } catch (error) {
             setLinkMessage({ type: 'error', text: error.response?.data?.detail || 'Bir hata oluştu.' });
         } finally {
             setLinking(false);
+        }
+    };
+
+    const handleUnlinkChild = async (studentId) => {
+        if (!window.confirm('Bu öğrenciyi hesabınızdan kaldırmak istediğinize emin misiniz?')) return;
+        setUnlinkingId(studentId);
+        try {
+            const response = await api.post('/accounts/profiles/unlink_child/', { student_id: studentId });
+            setChildren(response.data.children || []);
+        } catch (error) {
+            alert(error.response?.data?.detail || 'Kaldırma işlemi başarısız oldu.');
+        } finally {
+            setUnlinkingId(null);
         }
     };
 
@@ -169,12 +196,32 @@ export default function ParentDashboard() {
                                 <div className="app-card">
                                     <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
                                     {children.length === 0 ? (
-                                        <p className="text-gray-500 mb-4">Henüz hiçbir öğrenci hesabınıza bağlı değil. Çocuğunuzun kayıt olurken kullandığı e-posta adresini girerek bağlayabilirsiniz.</p>
+                                        <p className="text-gray-500 mb-4">Henüz hiçbir öğrenci hesabınıza bağlı değil. Çocuğunuzun kayıt olurken kullandığı e-posta adresini girerek bağlantı isteği gönderebilirsiniz.</p>
                                     ) : (
-                                        <ul className="mb-4 space-y-1">
+                                        <ul className="mb-4 space-y-2">
                                             {children.map(child => (
-                                                <li key={child.id} className="text-gray-800 font-medium">
-                                                    👤 {child.user.first_name} {child.user.last_name} <span className="text-gray-400 text-sm">({child.user.email})</span>
+                                                <li key={child.id} className="flex items-center justify-between text-gray-800 font-medium">
+                                                    <span>👤 {child.user.first_name} {child.user.last_name} <span className="text-gray-400 text-sm font-normal">({child.user.email})</span></span>
+                                                    <button
+                                                        onClick={() => handleUnlinkChild(child.id)}
+                                                        disabled={unlinkingId === child.id}
+                                                        className="text-xs text-red-600 hover:text-red-800 font-semibold disabled:opacity-50"
+                                                    >
+                                                        {unlinkingId === child.id ? 'Kaldırılıyor...' : 'Kaldır'}
+                                                    </button>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+
+                                    {sentLinkRequests.filter(r => r.status !== 'ACCEPTED').length > 0 && (
+                                        <ul className="mb-4 space-y-1 border-t border-gray-100 pt-3">
+                                            {sentLinkRequests.filter(r => r.status !== 'ACCEPTED').map(r => (
+                                                <li key={r.id} className="text-sm text-gray-500 flex items-center justify-between">
+                                                    <span>{r.student_name}</span>
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${r.status === 'PENDING' ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-700'}`}>
+                                                        {r.status === 'PENDING' ? 'Onay bekleniyor' : 'Reddedildi'}
+                                                    </span>
                                                 </li>
                                             ))}
                                         </ul>
@@ -243,8 +290,8 @@ export default function ParentDashboard() {
                                                         <td className="p-4 font-medium text-gray-800">{a.title}</td>
                                                         <td className="p-4 text-sm text-gray-600">{new Date(a.due_date).toLocaleString('tr-TR')}</td>
                                                         <td className="p-4">
-                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                                {a.status === 'COMPLETED' ? 'TAMAMLANDI' : 'BEKLİYOR'}
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold ${a.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : a.is_late ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                                {a.status === 'COMPLETED' ? 'TAMAMLANDI' : a.is_late ? 'GECİKTİ' : 'BEKLİYOR'}
                                                             </span>
                                                         </td>
                                                     </tr>

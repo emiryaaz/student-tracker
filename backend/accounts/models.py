@@ -63,6 +63,27 @@ class StudentProfile(models.Model):
         return f"Öğrenci: {self.user.first_name} {self.user.last_name}"
 
 
+# 4.5 VELİ-ÖĞRENCİ BAĞLANTI TALEBİ
+# Veli, bir öğrencinin e-postasını girdiğinde artık DOĞRUDAN bağlanmıyor: öğrencinin
+# onayını beklemesi gerekiyor. Bu olmadan herhangi bir veli, sadece e-postasını bilerek
+# tanımadığı bir öğrencinin ödev/sınav/kaynak verilerine erişebilirdi.
+class ParentLinkRequest(models.Model):
+    STATUS_CHOICES = (
+        ('PENDING', 'Bekliyor'),
+        ('ACCEPTED', 'Kabul Edildi'),
+        ('REJECTED', 'Reddedildi'),
+    )
+
+    parent = models.ForeignKey(ParentProfile, on_delete=models.CASCADE, related_name='sent_link_requests')
+    student = models.ForeignKey(StudentProfile, on_delete=models.CASCADE, related_name='received_link_requests')
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.parent.user.first_name} -> {self.student.user.first_name} ({self.get_status_display()})"
+
+
 # 5. OTOMATİK PROFİL OLUŞTURMA SİNYALİ
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):

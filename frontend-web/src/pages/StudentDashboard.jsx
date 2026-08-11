@@ -20,6 +20,11 @@ export default function StudentDashboard() {
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    // Bize gönderilen veli bağlantı talepleri (bir veli, e-postamızı girip bağlanmak isteyince
+    // burada onay/red bekler; onaylamadan hiçbir veli hesabımıza erişemez)
+    const [linkRequests, setLinkRequests] = useState([]);
+    const [respondingLinkId, setRespondingLinkId] = useState(null);
+
     // Tüm verileri (Ödev, Sınav, Kaynak) backend'den aynı anda çekiyoruz
     useEffect(() => {
         const fetchAllData = async () => {
@@ -68,6 +73,32 @@ export default function StudentDashboard() {
 
         return () => clearInterval(interval);
     }, []);
+
+    const fetchLinkRequests = async () => {
+        try {
+            const response = await api.get('/accounts/link-requests/');
+            const data = Array.isArray(response.data) ? response.data : [];
+            setLinkRequests(data.filter(r => r.status === 'PENDING'));
+        } catch (error) {
+            console.error('Bağlantı talepleri çekilemedi:', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchLinkRequests();
+    }, []);
+
+    const respondToLinkRequest = async (requestId, status) => {
+        setRespondingLinkId(requestId);
+        try {
+            await api.patch(`/accounts/link-requests/${requestId}/respond/`, { status });
+            setLinkRequests(prev => prev.filter(r => r.id !== requestId));
+        } catch (error) {
+            alert(error.response?.data?.detail || 'İşlem başarısız oldu.');
+        } finally {
+            setRespondingLinkId(null);
+        }
+    };
 
     const getStudentName = () => user?.first_name || user?.user?.first_name || 'Öğrenci';
 
@@ -140,18 +171,52 @@ export default function StudentDashboard() {
                     <>
                         {/* ÖZET EKRANI */}
                         {activeTab === 'home' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
-                                    <h3 className="text-lg font-semibold text-gray-700">Bekleyen Ödevler</h3>
-                                    <p className="text-4xl font-bold text-yellow-600 mt-2">{pendingTasks}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
-                                    <h3 className="text-lg font-semibold text-gray-700">Tamamlanan</h3>
-                                    <p className="text-4xl font-bold text-green-600 mt-2">{completedTasks}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
-                                    <h3 className="text-lg font-semibold text-gray-700">Girilen Sınavlar</h3>
-                                    <p className="text-4xl font-bold text-purple-600 mt-2">{exams.length}</p>
+                            <div className="space-y-8">
+                                {/* GELEN VELİ BAĞLANTI TALEPLERİ */}
+                                {linkRequests.length > 0 && (
+                                    <div className="app-card">
+                                        <h2 className="text-lg font-bold mb-4">Veli Bağlantı Talepleri</h2>
+                                        <div className="space-y-3">
+                                            {linkRequests.map(r => (
+                                                <div key={r.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-gray-100 rounded-lg p-4 bg-amber-50/50">
+                                                    <p className="text-sm text-gray-700">
+                                                        <span className="font-bold text-gray-900">{r.parent_name || r.parent_email}</span> sizi veli hesabına bağlamak istiyor.
+                                                    </p>
+                                                    <div className="flex gap-2 shrink-0">
+                                                        <button
+                                                            onClick={() => respondToLinkRequest(r.id, 'ACCEPTED')}
+                                                            disabled={respondingLinkId === r.id}
+                                                            className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                                        >
+                                                            Kabul Et
+                                                        </button>
+                                                        <button
+                                                            onClick={() => respondToLinkRequest(r.id, 'REJECTED')}
+                                                            disabled={respondingLinkId === r.id}
+                                                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50"
+                                                        >
+                                                            Reddet
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
+                                        <h3 className="text-lg font-semibold text-gray-700">Bekleyen Ödevler</h3>
+                                        <p className="text-4xl font-bold text-yellow-600 mt-2">{pendingTasks}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
+                                        <h3 className="text-lg font-semibold text-gray-700">Tamamlanan</h3>
+                                        <p className="text-4xl font-bold text-green-600 mt-2">{completedTasks}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
+                                        <h3 className="text-lg font-semibold text-gray-700">Girilen Sınavlar</h3>
+                                        <p className="text-4xl font-bold text-purple-600 mt-2">{exams.length}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -165,11 +230,11 @@ export default function StudentDashboard() {
                                 ) : (
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         {assignments.map(a => (
-                                            <div key={a.id} className={`border rounded-lg p-5 shadow-sm transition ${a.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : 'bg-white'}`}>
+                                            <div key={a.id} className={`border rounded-lg p-5 shadow-sm transition ${a.status === 'COMPLETED' ? 'bg-green-50 border-green-200' : a.is_late ? 'bg-red-50 border-red-200' : 'bg-white'}`}>
                                                 <div className="flex justify-between items-start mb-3">
                                                     <h3 className="text-lg font-bold text-gray-800">{a.title}</h3>
-                                                    <span className={`text-xs px-2 py-1 rounded font-bold ${a.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                                                        {a.status === 'COMPLETED' ? 'TAMAMLANDI' : 'BEKLİYOR'}
+                                                    <span className={`text-xs px-2 py-1 rounded font-bold ${a.status === 'COMPLETED' ? 'bg-green-200 text-green-800' : a.is_late ? 'bg-red-100 text-red-800' : 'bg-yellow-100 text-yellow-800'}`}>
+                                                        {a.status === 'COMPLETED' ? 'TAMAMLANDI' : a.is_late ? 'GECİKTİ' : 'BEKLİYOR'}
                                                     </span>
                                                 </div>
                                                 <p className="text-gray-600 text-sm mb-4">{a.description}</p>

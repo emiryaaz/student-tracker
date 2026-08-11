@@ -2,12 +2,18 @@ from rest_framework import viewsets, status, generics, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from django.conf import settings
 
-from .models import User, TeacherProfile, StudentProfile, ParentProfile
+from .models import User, TeacherProfile, StudentProfile, ParentProfile, ParentLinkRequest
 from .serializers import (
     UserSerializer, TeacherProfileSerializer,
     StudentProfileSerializer, ParentProfileSerializer,
-    RegisterSerializer
+    RegisterSerializer, ParentLinkRequestSerializer
 )
 
 
@@ -88,7 +94,11 @@ class ProfileViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def link_child(self, request):
-        """Veli, öğrencisinin e-posta adresini girerek onu kendi hesabına bağlar"""
+        """Veli, öğrencisinin e-posta adresini girer; bu ARTIK doğrudan bağlamaz, öğrenciye
+        bir bağlantı TALEBİ gönderir. Öğrenci bunu kendi panelinden kabul/red edebilir.
+        Eskiden burası anında bağlıyordu: yani herhangi bir veli, sadece bir öğrencinin
+        e-postasını bilerek onun ödev/sınav/kaynak verilerine öğrencinin haberi bile olmadan
+        erişebiliyordu. Onay adımı bu güvenlik açığını kapatır."""
         user = request.user
         if user.role != 'PARENT':
             return Response({"detail": "Sadece veliler öğrenci bağlayabilir."}, status=status.HTTP_403_FORBIDDEN)
@@ -105,8 +115,36 @@ class ProfileViewSet(viewsets.ViewSet):
         student_profile, _ = StudentProfile.objects.get_or_create(user=student_user)
         parent_profile, _ = ParentProfile.objects.get_or_create(user=user)
 
-        student_profile.parent = parent_profile
-        student_profile.save()
+        if student_profile.parent_id == parent_profile.id:
+            return Response({"detail": "Bu öğrenci zaten hesabınıza bağlı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        existing = ParentLinkRequest.objects.filter(parent=parent_profile, student=student_profile, status='PENDING')
+        if existing.exists():
+            return Response({"detail": "Bu öğrenciye zaten cevap bekleyen bir bağlantı talebiniz var."}, status=status.HTTP_400_BAD_REQUEST)
+
+        link_request = ParentLinkRequest.objects.create(parent=parent_profile, student=student_profile)
+
+        return Response(ParentLinkRequestSerializer(link_request).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['post'])
+    def unlink_child(self, request):
+        """Veli, hesabına bağlı bir öğrenciyi kendi isteğiyle kaldırabilir (örn. yanlış
+        öğrenci bağlanmışsa)."""
+        user = request.user
+        if user.role != 'PARENT':
+            return Response({"detail": "Sadece veliler öğrenci bağlantısını kaldırabilir."}, status=status.HTTP_403_FORBIDDEN)
+
+        student_id = request.data.get('student_id')
+        parent_profile = ParentProfile.objects.filter(user=user).first()
+        if not parent_profile:
+            return Response({"detail": "Veli profili bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        student_profile = StudentProfile.objects.filter(id=student_id, parent=parent_profile).first()
+        if not student_profile:
+            return Response({"detail": "Bu öğrenci zaten hesabınıza bağlı değil."}, status=status.HTTP_404_NOT_FOUND)
+
+        student_profile.parent = None
+        student_profile.save(update_fields=['parent'])
 
         return Response(ParentProfileSerializer(parent_profile).data, status=status.HTTP_200_OK)
 
@@ -179,3 +217,120 @@ class TeacherVerificationReviewView(generics.GenericAPIView):
         profile.save(update_fields=['verification_status', 'is_verified', 'verification_note'])
 
         return Response(TeacherProfileSerializer(profile).data)
+
+
+class ParentLinkRequestListView(generics.ListAPIView):
+    """Veli kendi gönderdiği, öğrenci ise kendisine gönderilen bağlantı taleplerini görür."""
+    serializer_class = ParentLinkRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'PARENT':
+            return ParentLinkRequest.objects.filter(parent__user=user).order_by('-created_at')
+        elif user.role == 'STUDENT':
+            return ParentLinkRequest.objects.filter(student__user=user).order_by('-created_at')
+        return ParentLinkRequest.objects.none()
+
+
+class ParentLinkRequestRespondView(generics.GenericAPIView):
+    """Öğrenci, kendisine gelen bir veli bağlantı talebini kabul eder ya da reddeder.
+    StudentProfile.parent alanına dokunabilecek TEK uç burasıdır (öğrencinin rızası olmadan
+    hiçbir veli bir öğrenciye bağlanamaz)."""
+    serializer_class = ParentLinkRequestSerializer
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        user = request.user
+        if user.role != 'STUDENT':
+            return Response({"detail": "Yalnızca öğrenciler bağlantı taleplerine yanıt verebilir."}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            link_request = ParentLinkRequest.objects.get(pk=pk, student__user=user)
+        except ParentLinkRequest.DoesNotExist:
+            return Response({"detail": "Talep bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        new_status = request.data.get('status')
+        if new_status not in ('ACCEPTED', 'REJECTED'):
+            return Response({"detail": "Geçersiz durum. 'ACCEPTED' ya da 'REJECTED' olmalı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        link_request.status = new_status
+        link_request.save(update_fields=['status', 'updated_at'])
+
+        if new_status == 'ACCEPTED':
+            student_profile = link_request.student
+            student_profile.parent = link_request.parent
+            student_profile.save(update_fields=['parent'])
+
+        return Response(ParentLinkRequestSerializer(link_request).data)
+
+
+class PasswordResetRequestView(APIView):
+    """Şifremi unuttum: e-posta ile sıfırlama linki gönderir. Geliştirmede EMAIL_BACKEND
+    'console' olduğu için gerçek e-posta gitmez, link `docker compose logs web` çıktısında
+    görünür (bkz. core/settings.py EMAIL_BACKEND açıklaması)."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        # GÜVENLİK: Kayıtlı olmayan bir e-posta için farklı bir cevap dönersek, biri bu uca
+        # rastgele e-postalar deneyerek "hangi e-postalar sistemde kayıtlı" diye tarayabilir
+        # (user enumeration). Bu yüzden e-posta var da olsa yok da olsa AYNI cevabı dönüyoruz.
+        generic_response = Response(
+            {"detail": "Bu e-posta adresine kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi."},
+            status=status.HTTP_200_OK
+        )
+
+        email = (request.data.get('email') or '').strip().lower()
+        if not email:
+            return generic_response
+
+        try:
+            user = User.objects.get(email__iexact=email)
+        except User.DoesNotExist:
+            return generic_response
+
+        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+        token = default_token_generator.make_token(user)
+        reset_link = f"{settings.FRONTEND_URL}/reset-password/{uidb64}/{token}"
+
+        send_mail(
+            subject="EduTracker - Şifre Sıfırlama",
+            message=(
+                f"Merhaba {user.first_name},\n\n"
+                f"Şifrenizi sıfırlamak için aşağıdaki linke tıklayın:\n{reset_link}\n\n"
+                "Bu isteği siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz."
+            ),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=True,
+        )
+
+        return generic_response
+
+
+class PasswordResetConfirmView(APIView):
+    """Linkteki uid/token doğrulanır ve yeni şifre kaydedilir."""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        uidb64 = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password', '')
+
+        if not uidb64 or not token or not new_password:
+            return Response({"detail": "Eksik bilgi."}, status=status.HTTP_400_BAD_REQUEST)
+        if len(new_password) < 6:
+            return Response({"detail": "Şifre en az 6 karakter olmalı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            return Response({"detail": "Geçersiz bağlantı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not default_token_generator.check_token(user, token):
+            return Response({"detail": "Bağlantının süresi dolmuş ya da geçersiz. Lütfen yeniden şifre sıfırlama isteği gönderin."}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.set_password(new_password)
+        user.save()
+        return Response({"detail": "Şifreniz başarıyla güncellendi."}, status=status.HTTP_200_OK)

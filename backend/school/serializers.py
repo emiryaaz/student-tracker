@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.utils import timezone
 from .models import Subject, TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent, TeacherReview
 from accounts.models import StudentProfile
 
@@ -29,6 +30,14 @@ class TutoringRelationSerializer(serializers.ModelSerializer):
 
 class AssignmentSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='relation.student.user.first_name', read_only=True)
+    # Veritabanında fiilen 'LATE' durumuna geçiren bir zamanlanmış görev (Celery/cron) yok;
+    # bunu her istekte anlık hesaplayarak sunuyoruz, böylece ek bir arka plan işi kurmadan
+    # arayüz "gecikti" durumunu gösterebiliyor. Öğrenci tamamladıysa (COMPLETED) artık geç
+    # sayılmaz.
+    is_late = serializers.SerializerMethodField()
+
+    def get_is_late(self, obj):
+        return obj.status == 'PENDING' and obj.due_date < timezone.now()
 
     class Meta:
         model = Assignment
