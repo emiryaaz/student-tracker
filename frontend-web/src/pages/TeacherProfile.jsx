@@ -3,6 +3,17 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
+// Kullanıcının rolüne göre ait olduğu dashboard adresini döner (Mesajlarım sekmesine
+// yönlendirmek için kullanılır; roller App.jsx'teki RoleRouter ile birebir aynı)
+const getDashboardPath = (user) => {
+    const role = user?.role || user?.user?.role;
+    if (role === 'TEACHER') return '/teacher';
+    if (role === 'STUDENT') return '/student';
+    if (role === 'PARENT') return '/parent';
+    if (role === 'ADMIN') return '/admin';
+    return '/login';
+};
+
 export default function TeacherProfile() {
     const { id } = useParams(); // URL'den öğretmenin ID'sini alır
     const navigate = useNavigate();
@@ -20,8 +31,44 @@ export default function TeacherProfile() {
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
     const [reviewError, setReviewError] = useState('');
 
+    // VELİ İSE: bağlı çocuk listesi + talebin hangi çocuk için gönderileceği
+    const [children, setChildren] = useState([]);
+    const [selectedChildId, setSelectedChildId] = useState('');
+    // Bu öğretmenle ilgili, giriş yapan kullanıcının (öğrenci kendisi ya da velinin
+    // çocukları) daha önce gönderdiği talepler — tekrar talep göndermeyi engellemek için
+    const [myRequests, setMyRequests] = useState([]);
+    const [requestError, setRequestError] = useState('');
+    const [requestSubmitting, setRequestSubmitting] = useState(false);
+
     const myId = user?.user?.id || user?.user_id || user?.id;
+    const myRole = user?.role || user?.user?.role;
+    const isStudent = myRole === 'STUDENT';
+    const isParent = myRole === 'PARENT';
     const myReview = reviews.find(r => Number(r.reviewer) === Number(myId));
+
+    // Öğrenci için: bu öğretmene daha önce attığı talep (varsa)
+    const myOwnRequest = isStudent
+        ? myRequests.find(r => Number(r.teacher) === Number(teacher?.user_id))
+        : null;
+
+    // Veli için: modalda seçtiği çocuğun bu öğretmene daha önce gönderilmiş talebi (varsa)
+    const selectedChildRequest = isParent && selectedChildId
+        ? myRequests.find(r => Number(r.teacher) === Number(teacher?.user_id) && Number(r.student) === Number(selectedChildId))
+        : null;
+
+    useEffect(() => {
+        if (!user) return;
+        // Öğrencinin kendi, ya da velinin çocukları adına gönderdiği talepleri çek
+        api.get('/school/match-requests/')
+            .then(res => setMyRequests(Array.isArray(res.data) ? res.data : []))
+            .catch(err => console.error('Talepler çekilemedi:', err));
+
+        if (isParent) {
+            api.get('/accounts/profiles/me/')
+                .then(res => setChildren(res.data?.children || []))
+                .catch(err => console.error('Bağlı öğrenciler çekilemedi:', err));
+        }
+    }, [user, isParent]);
 
     useEffect(() => {
         // Öğretmenin detay bilgilerini çeken endpoint (herkese açık)
@@ -72,17 +119,40 @@ export default function TeacherProfile() {
         const token = localStorage.getItem('access'); // Ekstra güvenlik için token kontrolü
 
         if (user || token) {
-            // Kullanıcı giriş yapmışsa doğrudan bu öğretmenin mesaj ekranına gönder
-            navigate(`/messages?user_id=${teacher?.user_id}`);
+            // Kullanıcı giriş yapmışsa doğrudan kendi panelindeki Mesajlarım sekmesine, bu öğretmenle sohbet açık halde gönder
+            navigate(getDashboardPath(user), { state: { openMessagesWith: teacher?.user_id } });
         } else {
             // Giriş yapmamışsa pop-up aç
             setShowAuthModal(true);
         }
     };
 
+    // Backend'den gelen hata gövdesi string, dizi ya da {alan: [...]}, {detail: "..."} gibi
+    // farklı şekillerde olabilir; hepsini okunabilir tek bir cümleye indirger.
+    const extractErrorMessage = (error) => {
+        const data = error.response?.data;
+        if (!data) return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+        if (typeof data === 'string') return data;
+        if (Array.isArray(data)) return data.join(' ');
+        if (data.detail) return Array.isArray(data.detail) ? data.detail.join(' ') : data.detail;
+        const firstKey = Object.keys(data)[0];
+        if (firstKey) {
+            const val = data[firstKey];
+            return Array.isArray(val) ? val.join(' ') : String(val);
+        }
+        return 'Bir hata oluştu. Lütfen tekrar deneyin.';
+    };
+
+    const openRequestModal = () => {
+        setRequestError('');
+        setSelectedChildId('');
+        setNote('');
+        setShowRequestModal(true);
+    };
+
     const handleSendRequest = async () => {
         const token = localStorage.getItem('access');
-        
+
         if (!token) {
             setShowRequestModal(false);
             setShowAuthModal(true); // Giriş yapmamışsa uyarı ver
@@ -96,15 +166,34 @@ export default function TeacherProfile() {
         // en son fallback olarak bırakıldı.
         const targetTeacherId = teacher?.user_id || teacher?.user?.id || teacher?.user || id;
 
+        setRequestError('');
+
+        // Veli, talebi hangi çocuğu için gönderdiğini seçmek zorunda; aksi halde backend'e
+        // hangi öğrenci için olduğu belirtilmemiş bir talep gider ve bu anlamsız olur.
+        if (isParent && !selectedChildId) {
+            setRequestError('Lütfen talebi hangi öğrenciniz için gönderdiğinizi seçin.');
+            return;
+        }
+
+        setRequestSubmitting(true);
         try {
-            await api.post('/school/match-requests/', { teacher: targetTeacherId, note: note });
+            const payload = { teacher: targetTeacherId, note: note };
+            if (isParent) payload.student_id = selectedChildId;
+
+            await api.post('/school/match-requests/', payload);
             alert("Talebiniz öğretmene başarıyla iletildi!");
             setShowRequestModal(false);
-            setNote(''); // Formu temizle
+            setNote('');
+            setSelectedChildId('');
+            // Listeyi tazele ki buton/durum hemen güncellensin
+            api.get('/school/match-requests/')
+                .then(res => setMyRequests(Array.isArray(res.data) ? res.data : []))
+                .catch(err => console.error('Talepler çekilemedi:', err));
         } catch (error) {
-            // EĞER HATA VERİRSE DJANGO'NUN GÖNDERDİĞİ MESAJI EKRANA YAZDIR
             console.error("Backend'den dönen HATA:", error.response?.data);
-            alert("Hata detayları: " + JSON.stringify(error.response?.data || {}));
+            setRequestError(extractErrorMessage(error));
+        } finally {
+            setRequestSubmitting(false);
         }
     };
 
@@ -162,7 +251,6 @@ export default function TeacherProfile() {
                                 <div className="mb-2">
                                     <h1 className="text-3xl font-extrabold text-gray-900 flex items-center justify-center md:justify-start gap-2">
                                         {teacher.first_name} {teacher.last_name}
-                                        {teacher.is_verified && <span className="text-blue-500 text-xl" title="Doğrulanmış Eğitmen">✔</span>}
                                     </h1>
                                     <p className="text-lg text-blue-600 font-medium">{teacher.title || 'Uzman Eğitmen'}</p>
                                     {teacher.average_rating ? (
@@ -172,17 +260,36 @@ export default function TeacherProfile() {
                                     ) : (
                                         <p className="text-sm text-gray-400 mt-1">Henüz değerlendirme yok</p>
                                     )}
+
+                                    {teacher.is_verified ? (
+                                        <p className="text-sm text-green-600 font-bold mt-2">✓ Doğrulanmış Öğretmen</p>
+                                    ) : (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-red-600 font-bold">⚠ Doğrulanmamış Öğretmen</p>
+                                            <p className="text-xs text-red-500 mt-0.5 max-w-sm">Sistemimiz tarafından doğrulanmamış öğretmenler ile çalışmanız önerilmez.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
                             <div className="mb-2 w-full md:w-auto flex flex-col sm:flex-row gap-3 justify-center md:justify-end">
-                                <button 
-                                    onClick={() => setShowRequestModal(true)}
-                                    className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
-                                >
-                                    📅 Ders Talebi
-                                </button>
-                                
+                                {isStudent && myOwnRequest?.status === 'ACCEPTED' ? (
+                                    <span className="w-full sm:w-auto bg-green-50 text-green-700 border border-green-200 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                                        ✓ Bu Öğretmenden Ders Alıyorsunuz
+                                    </span>
+                                ) : isStudent && myOwnRequest?.status === 'PENDING' ? (
+                                    <span className="w-full sm:w-auto bg-amber-50 text-amber-700 border border-amber-200 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2">
+                                        ⏳ Talebiniz Bekleniyor
+                                    </span>
+                                ) : (
+                                    <button
+                                        onClick={openRequestModal}
+                                        className="w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
+                                    >
+                                        📅 Ders Talebi
+                                    </button>
+                                )}
+
                                 <button 
                                     onClick={handleContactClick}
                                     className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
@@ -314,12 +421,43 @@ export default function TeacherProfile() {
                                 {teacher?.first_name} {teacher?.last_name}
                             </span> adlı eğitmene ders almak istediğinizi belirten bir istek gönderiyorsunuz.
                         </p>
-                        
+
+                        {isParent && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Hangi öğrenciniz için?
+                                </label>
+                                <select
+                                    value={selectedChildId}
+                                    onChange={(e) => setSelectedChildId(e.target.value)}
+                                    className="w-full border border-gray-300 rounded-xl p-3 focus:outline-none focus:border-teal-500"
+                                >
+                                    <option value="">Öğrenci seçin...</option>
+                                    {children.map(child => (
+                                        <option key={child.id} value={child.user.id}>
+                                            {child.user.first_name} {child.user.last_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {children.length === 0 && (
+                                    <p className="text-xs text-amber-600 mt-2">
+                                        Henüz bağlı bir öğrenciniz yok. Önce panelinizden bir öğrenci bağlamalısınız.
+                                    </p>
+                                )}
+                                {selectedChildRequest?.status === 'ACCEPTED' && (
+                                    <p className="text-xs text-green-600 mt-2">Bu öğrenciniz zaten bu öğretmenden ders alıyor.</p>
+                                )}
+                                {selectedChildRequest?.status === 'PENDING' && (
+                                    <p className="text-xs text-amber-600 mt-2">Bu öğrenciniz için zaten cevap bekleyen bir talep var.</p>
+                                )}
+                            </div>
+                        )}
+
                         <div className="mb-2">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 Öğretmene Notunuz (İsteğe bağlı)
                             </label>
-                            <textarea 
+                            <textarea
                                 className="w-full border border-gray-300 rounded-xl p-4 focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 h-32 resize-none transition"
                                 placeholder="Örn: Haftada 2 gün matematik dersi almak istiyorum, uygun günlerinizi konuşabilir miyiz?"
                                 value={note}
@@ -327,18 +465,21 @@ export default function TeacherProfile() {
                             ></textarea>
                         </div>
 
+                        {requestError && <p className="text-red-600 text-sm mt-2">{requestError}</p>}
+
                         <div className="flex gap-3 mt-6">
-                            <button 
+                            <button
                                 onClick={() => setShowRequestModal(false)}
                                 className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold py-3 rounded-xl transition"
                             >
                                 İptal
                             </button>
-                            <button 
+                            <button
                                 onClick={handleSendRequest}
-                                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition shadow-md"
+                                disabled={requestSubmitting || (isParent && (!selectedChildId || selectedChildRequest?.status === 'ACCEPTED' || selectedChildRequest?.status === 'PENDING'))}
+                                className="flex-1 bg-teal-600 hover:bg-teal-700 text-white font-bold py-3 rounded-xl transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Talebi Gönder
+                                {requestSubmitting ? 'Gönderiliyor...' : 'Talebi Gönder'}
                             </button>
                         </div>
                     </div>

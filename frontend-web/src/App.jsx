@@ -10,10 +10,8 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import StudentDashboard from './pages/StudentDashboard';
 import ParentDashboard from './pages/ParentDashboard';
 import TeachersDirectory from './pages/TeachersDirectory';
-import Messages from './pages/Messages';
 import InternalMarketplace from './pages/InternalMarketplace';
 import TeacherProfile from './pages/TeacherProfile';
-import Calendar from './pages/Calendar';
 
 // Trafik Polisi: Kullanıcının rolüne bakar ve onu doğru adrese postalar
 const RoleRouter = () => {
@@ -52,7 +50,6 @@ function App() {
                 <Route path="/register" element={<Register />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/teachers" element={<TeachersDirectory />} />
-                <Route path="/messages" element={<Messages />} />
                 <Route path="/marketplace" element={<InternalMarketplace />} />
                 <Route path="/teacher/:id" element={<TeacherProfile />} />
                 {/* Trafik Polisi Rotası */}
@@ -63,8 +60,7 @@ function App() {
                 <Route path="/teacher" element={<ProtectedRoute><TeacherDashboard /></ProtectedRoute>} />
                 <Route path="/student" element={<ProtectedRoute><StudentDashboard /></ProtectedRoute>} />
                 <Route path="/parent" element={<ProtectedRoute><ParentDashboard /></ProtectedRoute>} />
-                <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
-                
+
                 {/* Bilinmeyen adresleri Ana Sayfaya yolla */}
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

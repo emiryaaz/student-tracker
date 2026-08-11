@@ -1,13 +1,17 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
+import MessagesPanel from '../components/MessagesPanel';
+import CalendarPanel from '../components/CalendarPanel';
 
 export default function TeacherDashboard() {
     const { user, logout } = useContext(AuthContext);
     const navigate = useNavigate();
+    const location = useLocation();
     // SEKME VE VERİ STATELERİ
     const [activeTab, setActiveTab] = useState('home');
+    const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
     const [studentsData, setStudentsData] = useState([]);
     const [assignmentsData, setAssignmentsData] = useState([]);
     const [examsData, setExamsData] = useState([]);       // Sınav verileri
@@ -61,6 +65,14 @@ export default function TeacherDashboard() {
         };
         fetchAllData();
     }, []);
+
+    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
+    useEffect(() => {
+        if (location.state?.openMessagesWith) {
+            setActiveTab('messages');
+            setMessagesInitialUserId(location.state.openMessagesWith);
+        }
+    }, [location.state]);
 
     // YARDIMCI FONKSİYONLAR
     const getTeacherName = () => user?.first_name || user?.user?.first_name || 'Öğretmenimiz';
@@ -120,6 +132,12 @@ export default function TeacherDashboard() {
             formData.append('profile_picture', e.target.profile_picture.files[0]);
         }
 
+        // Diploma/doğrulama belgesi seçildiyse ekle (backend, yeni belge yüklenince
+        // doğrulama durumunu otomatik olarak 'İnceleniyor'a çeker)
+        if (e.target.diploma_document.files.length > 0) {
+            formData.append('diploma_document', e.target.diploma_document.files[0]);
+        }
+
         try {
             // ÖNEMLİ: Content-Type header'ını burada elle set ETMİYORUZ.
             // FormData gönderirken tarayıcı/axios boundary değerini kendisi otomatik ekler;
@@ -176,46 +194,35 @@ export default function TeacherDashboard() {
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 relative">
+        <div className="role-teacher flex h-screen bg-gray-100 relative">
             {/* SOL MENÜ */}
-            <div className="w-64 bg-ink-800 text-white flex flex-col">
-                <div className="p-6 border-b border-ink-600">
-                    <span className="font-display text-xl font-extrabold tracking-tight text-white">Edu<span className="text-teacher-400">Tracker</span></span>
-                    <p className="text-xs text-ink-500 mt-0.5">Öğretmen Paneli</p>
+            <div className="app-sidebar">
+                <div className="app-sidebar-logo">
+                    <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
+                    <p className="app-sidebar-subtitle">Öğretmen Paneli</p>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
-                    <button
-                        onClick={() => navigate('/messages')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between mt-2"
-                    >
-                        <span className="font-bold">Mesajlarım
-                            {unreadCount > 0 && (
-                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce ml-2">
-                                    {unreadCount}
-                                </span>
-                            )}
-                        </span>
-                    </button>
-                    <button
-                        onClick={() => navigate('/calendar')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mb-4"
-                    >
-                        <span className="font-bold">Takvim</span>
-                    </button>
                     {[
                         { id: 'profile', label: 'Profilim & Vitrin' },
                         { id: 'home', label: 'Ana Sayfa' },
                         { id: 'students', label: 'Öğrencilerim' },
                         { id: 'assignments', label: 'Ödev Takibi' },
                         { id: 'exams', label: 'Sınav Notları' },
-                        { id: 'resources', label: 'Ders Materyalleri' }
+                        { id: 'resources', label: 'Ders Materyalleri' },
+                        { id: 'messages', label: 'Mesajlarım' },
+                        { id: 'calendar', label: 'Takvim' }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`w-full text-left px-4 py-3 rounded transition ${activeTab === tab.id ? 'bg-teacher-600 shadow' : 'hover:bg-ink-700'}`}
+                            className={`app-nav-btn ${activeTab === tab.id ? 'app-nav-btn-active' : ''}`}
                         >
-                            {tab.label}
+                            <span>{tab.label}</span>
+                            {tab.id === 'messages' && unreadCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                    {unreadCount}
+                                </span>
+                            )}
                         </button>
                     ))}
                 </nav>
@@ -226,9 +233,11 @@ export default function TeacherDashboard() {
 
             {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Hoş Geldiniz, {getTeacherName()}</h1>
-                </header>
+                {activeTab === 'home' && (
+                    <header className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-800">Hoş Geldiniz, {getTeacherName()}</h1>
+                    </header>
+                )}
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
@@ -238,8 +247,36 @@ export default function TeacherDashboard() {
                     <>
                         {/* PROFIL SEKRESİ */}
                         {activeTab === 'profile' && (
-                            <div className="bg-white p-8 rounded-xl border border-gray-100 max-w-3xl">
+                            <div className="app-card max-w-3xl">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
+
+                                {/* DOĞRULAMA DURUMU */}
+                                <div className={`mb-6 rounded-lg p-4 border ${
+                                    profileData?.is_verified ? 'bg-green-50 border-green-200'
+                                    : profileData?.verification_status === 'PENDING' ? 'bg-amber-50 border-amber-200'
+                                    : profileData?.verification_status === 'REJECTED' ? 'bg-red-50 border-red-200'
+                                    : 'bg-red-50 border-red-200'
+                                }`}>
+                                    {profileData?.is_verified ? (
+                                        <p className="text-green-700 font-bold">✓ Doğrulanmış Öğretmen</p>
+                                    ) : profileData?.verification_status === 'PENDING' ? (
+                                        <>
+                                            <p className="text-amber-700 font-bold">⏳ Belgeniz İnceleniyor</p>
+                                            <p className="text-amber-700 text-sm mt-1">Diplomanız/belgeniz ekibimiz tarafından inceleniyor. Onaylandığında profilinizde "Doğrulanmış Öğretmen" rozeti görünecek.</p>
+                                        </>
+                                    ) : profileData?.verification_status === 'REJECTED' ? (
+                                        <>
+                                            <p className="text-red-700 font-bold">✕ Doğrulanmamış Öğretmen — Belgeniz Reddedildi</p>
+                                            {profileData?.verification_note && <p className="text-red-700 text-sm mt-1">Sebep: {profileData.verification_note}</p>}
+                                            <p className="text-red-700 text-sm mt-1">Aşağıdan yeni bir belge yükleyerek tekrar başvurabilirsiniz.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <p className="text-red-700 font-bold">⚠ Doğrulanmamış Öğretmen</p>
+                                            <p className="text-red-700 text-sm mt-1">Profilinizin öğrenci ve velilere güvenilir görünmesi için diplomanızı/belgenizi aşağıdan yükleyin; ekibimiz onayladığında profilinizde "Doğrulanmış Öğretmen" rozeti görünecek.</p>
+                                        </>
+                                    )}
+                                </div>
 
                                 <form onSubmit={handleProfileSubmit}>
                                     <div className="space-y-4">
@@ -268,7 +305,18 @@ export default function TeacherDashboard() {
                                             <input name="profile_picture" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
                                         </div>
 
-                                        <button type="submit" className="w-full bg-teacher-600 text-white font-bold py-3 rounded-lg hover:bg-ink-700 transition mt-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">Diploma / Doğrulama Belgesi</label>
+                                            {profileData?.diploma_document && (
+                                                <p className="text-xs text-gray-500 mb-2">
+                                                    Yüklü belge: <a href={`http://localhost:8000${profileData.diploma_document}`} target="_blank" rel="noreferrer" className="text-teacher-700 hover:underline">Görüntüle ↗</a>
+                                                </p>
+                                            )}
+                                            <input name="diploma_document" type="file" accept="application/pdf,image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
+                                            <p className="text-xs text-gray-500 mt-1">Yeni bir belge yüklerseniz doğrulama durumu sıfırlanır ve yeniden incelemeye alınır.</p>
+                                        </div>
+
+                                        <button type="submit" className="app-btn-primary w-full py-3 mt-4">
                                             Profili ve Vitrini Kaydet
                                         </button>
                                     </div>
@@ -300,7 +348,7 @@ export default function TeacherDashboard() {
                                 </div>
 
                                 {/* Alt Kısım: Gelen Ders Talepleri */}
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                <div className="app-card">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                                         Gelen Ders Talepleri
                                     </h2>
@@ -367,7 +415,7 @@ export default function TeacherDashboard() {
 
                         {/* ÖĞRENCİLERİM SEKMESİ */}
                         {activeTab === 'students' && (
-                            <div className="bg-white p-6 rounded-xl border border-gray-100">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Öğrenci Listesi</h2>
                                 <div className="overflow-hidden rounded-lg border border-gray-200">
                                     <table className="w-full text-left border-collapse">
@@ -398,7 +446,7 @@ export default function TeacherDashboard() {
 
                         {/* ÖDEV TAKİBİ (öğrenciye göre gruplu) */}
                         {activeTab === 'assignments' && (
-                            <div className="bg-white p-6 rounded-xl border border-gray-100">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Verilen Ödevler</h2>
                                 {assignmentsData.length === 0 ? (
                                     <p className="text-gray-500">Henüz verilmiş bir ödev yok.</p>
@@ -440,7 +488,7 @@ export default function TeacherDashboard() {
 
                         {/* SINAV NOTLARI SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'exams' && (
-                            <div className="bg-white p-6 rounded-xl border border-gray-100">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Sonuçları</h2>
                                 {examsData.length === 0 ? (
                                     <p className="text-gray-500">Henüz girilmiş bir sınav notu yok.</p>
@@ -480,7 +528,7 @@ export default function TeacherDashboard() {
 
                         {/* KAYNAKLAR SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'resources' && (
-                            <div className="bg-white p-6 rounded-xl border border-gray-100">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Paylaşılan Materyaller</h2>
                                 {resourcesData.length === 0 ? (
                                     <p className="text-gray-500">Henüz paylaşılmış bir materyal yok.</p>
@@ -516,6 +564,12 @@ export default function TeacherDashboard() {
                                 )}
                             </div>
                         )}
+
+                        {/* MESAJLARIM SEKMESİ */}
+                        {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
+
+                        {/* TAKVİM SEKMESİ */}
+                        {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}
             </div>
@@ -539,7 +593,7 @@ export default function TeacherDashboard() {
                                 <input type="text" required placeholder="Ödev Başlığı" className="w-full border p-2 rounded" value={taskData.title} onChange={e => setTaskData({ ...taskData, title: e.target.value })} />
                                 <textarea placeholder="Açıklama" className="w-full border p-2 rounded" value={taskData.description} onChange={e => setTaskData({ ...taskData, description: e.target.value })}></textarea>
                                 <input type="datetime-local" required className="w-full border p-2 rounded" value={taskData.due_date} onChange={e => setTaskData({ ...taskData, due_date: e.target.value })} />
-                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-teacher-600 text-white rounded">Gönder</button></div>
+                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="app-btn-primary px-4 py-2">Gönder</button></div>
                             </form>
                         )}
 
@@ -559,7 +613,7 @@ export default function TeacherDashboard() {
                             <form onSubmit={(e) => handleSubmit(e, 'resources', resourceData, setResourcesData, () => setResourceData({ title: '', url: '' }))} className="space-y-4">
                                 <input type="text" required placeholder="Kaynak Başlığı (Örn: Türev PDF)" className="w-full border p-2 rounded" value={resourceData.title} onChange={e => setResourceData({ ...resourceData, title: e.target.value })} />
                                 <input type="url" placeholder="Link/URL (Opsiyonel)" className="w-full border p-2 rounded" value={resourceData.url} onChange={e => setResourceData({ ...resourceData, url: e.target.value })} />
-                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="px-4 py-2 bg-teacher-600 text-white rounded">Paylaş</button></div>
+                                <div className="flex justify-end space-x-2"><button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 border rounded">İptal</button><button type="submit" className="app-btn-primary px-4 py-2">Paylaş</button></div>
                             </form>
                         )}
                     </div>

@@ -1,14 +1,21 @@
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets, status, generics, permissions
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from .models import User, TeacherProfile, StudentProfile, ParentProfile
 from .serializers import (
-    UserSerializer, TeacherProfileSerializer, 
+    UserSerializer, TeacherProfileSerializer,
     StudentProfileSerializer, ParentProfileSerializer,
     RegisterSerializer
 )
+
+
+class IsAdmin(permissions.BasePermission):
+    """Yalnızca ADMIN rolündeki kullanıcıların erişimine izin verir (öğretmen doğrulama
+    onay/red işlemleri gibi hassas admin işlemleri için)."""
+    def has_permission(self, request, view):
+        return bool(request.user and request.user.is_authenticated and request.user.role == 'ADMIN')
 
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
@@ -122,3 +129,53 @@ class ProfileUpdateView(generics.RetrieveUpdateAPIView):
         # PATCH veya GET isteği atan kişinin (kendi) profilini bulup döndürür
         # Eğer modelin User ile OneToOne bağlıysa ve related_name 'teacher_profile' ise:
         return self.request.user.teacher_profile
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        # Öğretmen yeni bir diploma/belge yüklediyse, önceki durum (onaylı olsa bile) artık
+        # bu yeni belgeyi kapsamıyor demektir; admin'in tekrar incelemesi için PENDING'e
+        # alıyoruz ve is_verified'ı sıfırlıyoruz. Böylece eski onaylı bir öğretmen, şüpheli
+        # yeni bir belge yükleyip eski onayın arkasına saklanamaz.
+        if 'diploma_document' in self.request.FILES:
+            instance.verification_status = 'PENDING'
+            instance.is_verified = False
+            instance.save(update_fields=['verification_status', 'is_verified'])
+
+
+class TeacherVerificationListView(generics.ListAPIView):
+    """Admin paneli: doğrulama kuyruğu. ?status=PENDING gibi bir filtre verilmezse tüm
+    öğretmenleri (en yeni başta) listeler."""
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        qs = TeacherProfile.objects.select_related('user').all().order_by('-id')
+        status_param = self.request.query_params.get('status')
+        if status_param:
+            qs = qs.filter(verification_status=status_param.upper())
+        return qs
+
+
+class TeacherVerificationReviewView(generics.GenericAPIView):
+    """Admin paneli: bir öğretmenin diplomasını onaylar ya da reddeder. Öğretmenin
+    is_verified/verification_status alanlarına dokunabilecek TEK uç burasıdır."""
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [IsAdmin]
+    queryset = TeacherProfile.objects.all()
+
+    def patch(self, request, pk):
+        try:
+            profile = TeacherProfile.objects.get(pk=pk)
+        except TeacherProfile.DoesNotExist:
+            return Response({"detail": "Öğretmen profili bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        new_status = request.data.get('status')
+        if new_status not in ('APPROVED', 'REJECTED'):
+            return Response({"detail": "Geçersiz durum. 'APPROVED' ya da 'REJECTED' olmalı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.verification_status = new_status
+        profile.is_verified = (new_status == 'APPROVED')
+        profile.verification_note = request.data.get('note', '')
+        profile.save(update_fields=['verification_status', 'is_verified', 'verification_note'])
+
+        return Response(TeacherProfileSerializer(profile).data)

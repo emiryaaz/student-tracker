@@ -83,9 +83,13 @@ export default function TeachersDirectory() {
                                     <div className="text-center flex-1">
                                         <h3 className="text-xl font-bold text-gray-900">
                                             {teacher.first_name} {teacher.last_name}
-                                            {teacher.is_verified && <span className="text-blue-500 ml-1" title="Doğrulanmış Eğitmen">✔</span>}
                                         </h3>
                                         <p className="text-blue-600 font-medium text-sm mt-1">{teacher.title || 'Eğitmen'}</p>
+                                        {teacher.is_verified ? (
+                                            <p className="text-green-600 text-xs font-bold mt-1">✓ Doğrulanmış Öğretmen</p>
+                                        ) : (
+                                            <p className="text-red-600 text-xs font-bold mt-1">⚠ Doğrulanmamış Öğretmen</p>
+                                        )}
                                         <p className="text-gray-600 text-sm mt-4 line-clamp-3">
                                             {teacher.bio || 'Henüz bir biyografi eklenmedi.'}
                                         </p>

@@ -1,13 +1,17 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
+import MessagesPanel from '../components/MessagesPanel';
+import CalendarPanel from '../components/CalendarPanel';
+import MarketplacePanel from '../components/MarketplacePanel';
 
 export default function ParentDashboard() {
     const { user, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
+    const location = useLocation();
 
     const [activeTab, setActiveTab] = useState('home');
+    const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
 
     // Veri Stateleri
     const [assignments, setAssignments] = useState([]);
@@ -46,6 +50,14 @@ export default function ParentDashboard() {
     useEffect(() => {
         fetchAllData();
     }, []);
+
+    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
+    useEffect(() => {
+        if (location.state?.openMessagesWith) {
+            setActiveTab('messages');
+            setMessagesInitialUserId(location.state.openMessagesWith);
+        }
+    }, [location.state]);
 
     useEffect(() => {
         const fetchUnreadCount = async () => {
@@ -99,134 +111,119 @@ export default function ParentDashboard() {
     const completedTasks = assignments.filter(a => a.status === 'COMPLETED').length;
 
     return (
-        <div className="flex h-screen bg-gray-50 relative">
-            {/* SOL MENÜ - Veli Teması (Mor) */}
-            <div className="w-64 bg-purple-900 text-white flex flex-col">
-                <div className="p-6 text-2xl font-bold border-b border-purple-800 tracking-wider">
-                    EduTracker
+        <div className="role-parent flex h-screen bg-gray-50 relative">
+            {/* SOL MENÜ */}
+            <div className="app-sidebar">
+                <div className="app-sidebar-logo">
+                    <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
+                    <p className="app-sidebar-subtitle">Veli Paneli</p>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    <button onClick={() => setActiveTab('home')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'home' ? 'bg-purple-700 shadow' : 'hover:bg-purple-800'}`}>
-                        Genel Durum
-                    </button>
-                    <button onClick={() => setActiveTab('assignments')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'assignments' ? 'bg-purple-700 shadow' : 'hover:bg-purple-800'}`}>
-                        Çocuğumun Ödevleri
-                    </button>
-                    <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'exams' ? 'bg-purple-700 shadow' : 'hover:bg-purple-800'}`}>
-                        Sınav Notları
-                    </button>
-                    <button onClick={() => setActiveTab('resources')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'resources' ? 'bg-purple-700 shadow' : 'hover:bg-purple-800'}`}>
-                        Ders Materyalleri
-                    </button>
-                    <button
-                        onClick={() => navigate('/marketplace')}
-                        className="w-full text-left px-4 py-3 rounded transition hover:bg-gray-700 text-gray-300 hover:text-white flex items-center mb-2"
-                    >
-                        <span className="font-medium">Eğitmen Vitrini</span>
-                    </button>
-
-                    {/* Mesajlarım Butonu */}
-                    <button
-                        onClick={() => navigate('/messages')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between"
-                    >
-                        <div className="flex items-center">
-                            <span className="font-bold">Mesajlarım
-                                {unreadCount > 0 && (
-                                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
-                                        {unreadCount}
-                                    </span>
-                                )}
-                            </span>
-                        </div>
-                    </button>
-
-                    {/* Takvim Butonu */}
-                    <button
-                        onClick={() => navigate('/calendar')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
-                    >
-                        <span className="font-bold">📅 Takvim</span>
-                    </button>
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    {[
+                        { id: 'home', label: 'Genel Durum' },
+                        { id: 'assignments', label: 'Çocuğumun Ödevleri' },
+                        { id: 'exams', label: 'Sınav Notları' },
+                        { id: 'resources', label: 'Ders Materyalleri' },
+                        { id: 'marketplace', label: 'Eğitmen Vitrini' },
+                        { id: 'messages', label: 'Mesajlarım' },
+                        { id: 'calendar', label: 'Takvim' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`app-nav-btn ${activeTab === tab.id ? 'app-nav-btn-active' : ''}`}
+                        >
+                            <span>{tab.label}</span>
+                            {tab.id === 'messages' && unreadCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </nav>
-                <div className="p-4 border-t border-purple-800">
+                <div className="p-4 border-t border-ink-600">
                     <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
                 </div>
             </div>
 
             {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Hoş Geldiniz, {getParentName()}</h1>
-                    <p className="text-gray-600 mt-2">Çocuğunuzun tüm akademik sürecini buradan takip edebilirsiniz.</p>
-                </header>
-
-                {/* BAĞLI ÖĞRENCİLER VE ÖĞRENCİ EKLEME */}
-                <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
-                    <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
-                    {children.length === 0 ? (
-                        <p className="text-gray-500 mb-4">Henüz hiçbir öğrenci hesabınıza bağlı değil. Çocuğunuzun kayıt olurken kullandığı e-posta adresini girerek bağlayabilirsiniz.</p>
-                    ) : (
-                        <ul className="mb-4 space-y-1">
-                            {children.map(child => (
-                                <li key={child.id} className="text-gray-800 font-medium">
-                                    👤 {child.user.first_name} {child.user.last_name} <span className="text-gray-400 text-sm">({child.user.email})</span>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-
-                    <form onSubmit={handleLinkChild} className="flex gap-2">
-                        <input
-                            type="email"
-                            required
-                            placeholder="Öğrencinin e-posta adresi"
-                            value={childEmail}
-                            onChange={(e) => setChildEmail(e.target.value)}
-                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-purple-500"
-                        />
-                        <button type="submit" disabled={linking} className="bg-purple-700 hover:bg-purple-800 text-white font-bold px-4 py-2 rounded-lg transition disabled:opacity-50">
-                            {linking ? 'Bağlanıyor...' : 'Öğrenci Ekle'}
-                        </button>
-                    </form>
-                    {linkMessage.text && (
-                        <p className={`mt-3 text-sm font-medium ${linkMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
-                            {linkMessage.text}
-                        </p>
-                    )}
-                </div>
+                {activeTab === 'home' && (
+                    <header className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-800">Hoş Geldiniz, {getParentName()}</h1>
+                        <p className="text-gray-600 mt-2">Çocuğunuzun tüm akademik sürecini buradan takip edebilirsiniz.</p>
+                    </header>
+                )}
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-purple-600"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-parent-600"></div>
                     </div>
                 ) : (
                     <>
                         {/* ÖZET EKRANI */}
                         {activeTab === 'home' && (
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase">Bekleyen Ödevler</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-2">{pendingTasks}</p>
+                            <div className="space-y-8">
+                                {/* BAĞLI ÖĞRENCİLER VE ÖĞRENCİ EKLEME */}
+                                <div className="app-card">
+                                    <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
+                                    {children.length === 0 ? (
+                                        <p className="text-gray-500 mb-4">Henüz hiçbir öğrenci hesabınıza bağlı değil. Çocuğunuzun kayıt olurken kullandığı e-posta adresini girerek bağlayabilirsiniz.</p>
+                                    ) : (
+                                        <ul className="mb-4 space-y-1">
+                                            {children.map(child => (
+                                                <li key={child.id} className="text-gray-800 font-medium">
+                                                    👤 {child.user.first_name} {child.user.last_name} <span className="text-gray-400 text-sm">({child.user.email})</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+
+                                    <form onSubmit={handleLinkChild} className="flex gap-2">
+                                        <input
+                                            type="email"
+                                            required
+                                            placeholder="Öğrencinin e-posta adresi"
+                                            value={childEmail}
+                                            onChange={(e) => setChildEmail(e.target.value)}
+                                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:border-parent-500"
+                                        />
+                                        <button type="submit" disabled={linking} className="app-btn-primary px-4 py-2 disabled:opacity-50">
+                                            {linking ? 'Bağlanıyor...' : 'Öğrenci Ekle'}
+                                        </button>
+                                    </form>
+                                    {linkMessage.text && (
+                                        <p className={`mt-3 text-sm font-medium ${linkMessage.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>
+                                            {linkMessage.text}
+                                        </p>
+                                    )}
                                 </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase">Tamamlanan Ödevler</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-2">{completedTasks}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase">Girilen Sınavlar</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-2">{exams.length}</p>
-                                </div>
-                                <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
-                                    <h3 className="text-sm font-bold text-gray-500 uppercase">Materyaller</h3>
-                                    <p className="text-3xl font-bold text-gray-800 mt-2">{resources.length}</p>
+
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-yellow-500">
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase">Bekleyen Ödevler</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-2">{pendingTasks}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase">Tamamlanan Ödevler</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-2">{completedTasks}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-purple-500">
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase">Girilen Sınavlar</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-2">{exams.length}</p>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
+                                        <h3 className="text-sm font-bold text-gray-500 uppercase">Materyaller</h3>
+                                        <p className="text-3xl font-bold text-gray-800 mt-2">{resources.length}</p>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
                         {/* ÖDEVLER */}
                         {activeTab === 'assignments' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Ödev Listesi</h2>
                                 {assignments.length === 0 ? (
                                     <p className="text-gray-500">Şu an kayıtlı ödev bulunmuyor.</p>
@@ -261,7 +258,7 @@ export default function ParentDashboard() {
 
                         {/* SINAVLAR */}
                         {activeTab === 'exams' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Notları</h2>
                                 {exams.length === 0 ? (
                                     <p className="text-gray-500">Kayıtlı sınav notu bulunmuyor.</p>
@@ -278,7 +275,7 @@ export default function ParentDashboard() {
                                             </thead>
                                             <tbody className="divide-y">
                                                 {exams.map(e => (
-                                                    <tr key={e.id} className="hover:bg-purple-50">
+                                                    <tr key={e.id} className="hover:bg-parent-500/10">
                                                         <td className="p-4 font-bold text-gray-800">{e.exam_name}</td>
                                                         <td className="p-4 text-sm text-gray-600">{new Date(e.exam_date).toLocaleDateString('tr-TR')}</td>
                                                         <td className="p-4 text-sm text-gray-600">{e.notes || '-'}</td>
@@ -294,7 +291,7 @@ export default function ParentDashboard() {
 
                         {/* KAYNAKLAR */}
                         {activeTab === 'resources' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Öğretmen Tarafından Paylaşılan Materyaller</h2>
                                 {resources.length === 0 ? (
                                     <p className="text-gray-500">Paylaşılan bir materyal bulunmuyor.</p>
@@ -317,6 +314,22 @@ export default function ParentDashboard() {
                                 )}
                             </div>
                         )}
+
+                        {/* EĞİTMEN VİTRİNİ SEKMESİ */}
+                        {activeTab === 'marketplace' && (
+                            <MarketplacePanel
+                                onMessageTeacher={(teacherUserId) => {
+                                    setMessagesInitialUserId(teacherUserId);
+                                    setActiveTab('messages');
+                                }}
+                            />
+                        )}
+
+                        {/* MESAJLARIM SEKMESİ */}
+                        {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
+
+                        {/* TAKVİM SEKMESİ */}
+                        {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}
             </div>

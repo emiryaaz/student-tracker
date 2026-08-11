@@ -1,5 +1,5 @@
 from rest_framework import viewsets, permissions, generics
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from .models import TutoringRelation, Assignment, ExamResult, Resource, Message, MatchRequest, CalendarEvent, TeacherReview
 from .serializers import (TutoringRelationSerializer, AssignmentSerializer,
                           ExamResultSerializer, ResourceSerializer, MessageSerializer,MatchRequestSerializer,
@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.utils import timezone
 from datetime import timedelta
-from accounts.models import TeacherProfile, StudentProfile
+from accounts.models import TeacherProfile, StudentProfile, User
 
 class TeacherStudentsViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = TutoringRelationSerializer
@@ -121,19 +121,53 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         user = self.request.user
-        
-        # KESİN ÇÖZÜM: Rol kontrolü (if) yapmadan, bu kullanıcının
-        # İSTER ÖĞRETMEN İSTER ÖĞRENCİ OLARAK dahil olduğu tüm talepleri getir!
+
+        # Öğretmen kendine gelen, öğrenci kendi gönderdiği talepleri görür.
+        # Veli için 'student=user' hiçbir zaman eşleşmez (veli kendisi öğrenci değildir);
+        # bu yüzden velinin çocukları adına gönderdiği talepleri de görebilmesi için
+        # ayrıca 'student__student_profile__parent__user=user' ile eşleştiriyoruz.
+        if user.role == 'PARENT':
+            return MatchRequest.objects.filter(
+                student__student_profile__parent__user=user
+            ).order_by('-created_at')
+
         return MatchRequest.objects.filter(
             Q(teacher=user) | Q(student=user)
         ).order_by('-created_at')
 
     def perform_create(self, serializer):
-        # Sadece öğrenciler ders talebi oluşturabilir; aksi halde bir öğretmen/veli de
-        # bu uca istek atıp kendini öğrenci gibi göstererek anlamsız bir kayıt açabilirdi.
-        if self.request.user.role != 'STUDENT':
-            raise PermissionDenied("Yalnızca öğrenciler ders talebi oluşturabilir.")
-        serializer.save(student=self.request.user)
+        user = self.request.user
+
+        # Talebin gerçekte HANGİ ÖĞRENCİ için olduğunu belirle:
+        # - Öğrenci kendi adına talep gönderiyorsa hedef öğrenci kendisidir.
+        # - Veli, bağlı olduğu çocuklarından birini seçip onun adına talep gönderebilir;
+        #   bu olmadan veli, MatchRequest.student alanına yanlışlıkla kendi kullanıcı
+        #   ID'sini yazıp "kendisi için ders talep etmiş" gibi anlamsız bir kayıt açardı.
+        if user.role == 'STUDENT':
+            target_student = user
+        elif user.role == 'PARENT':
+            student_id = serializer.validated_data.get('student_id')
+            if not student_id:
+                raise ValidationError({"student_id": "Lütfen talebi hangi öğrenciniz için gönderdiğinizi seçin."})
+            is_own_child = StudentProfile.objects.filter(user_id=student_id, parent__user=user).exists()
+            if not is_own_child:
+                raise PermissionDenied("Yalnızca kendinize bağlı bir öğrenci için talep gönderebilirsiniz.")
+            target_student = User.objects.get(id=student_id)
+        else:
+            raise PermissionDenied("Yalnızca öğrenciler veya veliler ders talebi oluşturabilir.")
+
+        teacher = serializer.validated_data.get('teacher')
+
+        # Aynı öğrenci - öğretmen çifti için zaten kabul edilmiş bir talep varsa (yani öğrenci
+        # zaten bu öğretmenden ders alıyorsa) veya cevap bekleyen bir talep varsa tekrar talep
+        # gönderilmesine izin verme. Reddedilmiş bir talepten sonra tekrar denemek serbest.
+        existing = MatchRequest.objects.filter(student=target_student, teacher=teacher)
+        if existing.filter(status='ACCEPTED').exists():
+            raise ValidationError("Bu öğrenci zaten bu öğretmenden ders alıyor, tekrar talep gönderilemez.")
+        if existing.filter(status='PENDING').exists():
+            raise ValidationError("Bu öğretmene zaten cevap bekleyen bir talep var.")
+
+        serializer.save(student=target_student)
 # 2. Öğretmenin İsteği Onaylaması / Reddetmesi
 class MatchRequestRespondView(APIView):
     def patch(self, request, pk):

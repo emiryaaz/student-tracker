@@ -1,13 +1,17 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
+import MessagesPanel from '../components/MessagesPanel';
+import CalendarPanel from '../components/CalendarPanel';
+import MarketplacePanel from '../components/MarketplacePanel';
 
 export default function StudentDashboard() {
     const { user, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
+    const location = useLocation();
 
     const [activeTab, setActiveTab] = useState('home');
+    const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
 
     // Veri Stateleri
     const [assignments, setAssignments] = useState([]);
@@ -41,6 +45,14 @@ export default function StudentDashboard() {
         fetchAllData();
     }, []);
 
+    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
+    useEffect(() => {
+        if (location.state?.openMessagesWith) {
+            setActiveTab('messages');
+            setMessagesInitialUserId(location.state.openMessagesWith);
+        }
+    }, [location.state]);
+
     useEffect(() => {
         const fetchUnreadCount = async () => {
             try {
@@ -73,72 +85,56 @@ export default function StudentDashboard() {
     const completedTasks = assignments.filter(a => a.status === 'COMPLETED').length;
 
     return (
-        <div className="flex h-screen bg-gray-50 relative">
+        <div className="role-student flex h-screen bg-gray-50 relative">
             {/* SOL MENÜ */}
-            <div className="w-64 bg-teal-800 text-white flex flex-col">
-                <div className="p-6 text-2xl font-bold border-b border-teal-700 tracking-wider">
-                    EduTracker
+            <div className="app-sidebar">
+                <div className="app-sidebar-logo">
+                    <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
+                    <p className="app-sidebar-subtitle">Öğrenci Paneli</p>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-
-                    <button onClick={() => setActiveTab('home')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'home' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
-                        Özet Ekranı
-                    </button>
-                    <button onClick={() => setActiveTab('assignments')} className={`w-full text-left px-4 py-3 rounded transition flex justify-between items-center ${activeTab === 'assignments' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
-                        <span>Ödevlerim</span>
-                        {pendingTasks > 0 && <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">{pendingTasks}</span>}
-                    </button>
-                    <button onClick={() => setActiveTab('exams')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'exams' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
-                        Sınav Sonuçlarım
-                    </button>
-                    <button onClick={() => setActiveTab('resources')} className={`w-full text-left px-4 py-3 rounded transition ${activeTab === 'resources' ? 'bg-teal-600 shadow' : 'hover:bg-teal-700'}`}>
-                        Ders Materyalleri
-                    </button>
-                    <button
-                        onClick={() => navigate('/marketplace')}
-                        className="w-full text-left px-4 py-3 rounded transition hover:bg-gray-700 text-gray-300 hover:text-white flex items-center mb-2"
-                    >
-                        <span className="font-medium">Eğitmen Vitrini</span>
-                    </button>
-
-                    {/* Mesajlarım Butonu */}
-                    <button
-                        onClick={() => navigate('/messages')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-green-600 hover:bg-green-700 text-white shadow flex items-center justify-between"
-                    >
-                        <div className="flex items-center">
-                            <span className="font-bold">Mesajlarım
-                                    {unreadCount > 0 && (
-                                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
-                                            {unreadCount}
-                                        </span>
-                                    )}
-                            </span>
-                        </div>
-                    </button>
-
-                    {/* Takvim Butonu */}
-                    <button
-                        onClick={() => navigate('/calendar')}
-                        className="w-full text-left px-4 py-3 rounded transition bg-indigo-600 hover:bg-indigo-700 text-white shadow flex items-center mt-2"
-                    >
-                        <span className="font-bold">📅 Takvim</span>
-                    </button>
+                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                    {[
+                        { id: 'home', label: 'Özet Ekranı' },
+                        { id: 'assignments', label: 'Ödevlerim' },
+                        { id: 'exams', label: 'Sınav Sonuçlarım' },
+                        { id: 'resources', label: 'Ders Materyalleri' },
+                        { id: 'marketplace', label: 'Eğitmen Vitrini' },
+                        { id: 'messages', label: 'Mesajlarım' },
+                        { id: 'calendar', label: 'Takvim' }
+                    ].map(tab => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`app-nav-btn ${activeTab === tab.id ? 'app-nav-btn-active' : ''}`}
+                        >
+                            <span>{tab.label}</span>
+                            {tab.id === 'assignments' && pendingTasks > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">{pendingTasks}</span>
+                            )}
+                            {tab.id === 'messages' && unreadCount > 0 && (
+                                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+                    ))}
                 </nav>
-                <div className="p-4 border-t border-teal-700">
+                <div className="p-4 border-t border-ink-600">
                     <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
                 </div>
             </div>
 
             {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
-                <header className="mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Merhaba, {getStudentName()} 👋</h1>
-                </header>
+                {activeTab === 'home' && (
+                    <header className="mb-8">
+                        <h1 className="text-3xl font-bold text-gray-800">Merhaba, {getStudentName()} 👋</h1>
+                    </header>
+                )}
 
                 {loading ? (
                     <div className="flex justify-center items-center h-48">
-                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-teal-600"></div>
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-student-600"></div>
                     </div>
                 ) : (
                     <>
@@ -162,7 +158,7 @@ export default function StudentDashboard() {
 
                         {/* ÖDEVLERİM */}
                         {activeTab === 'assignments' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Tüm Ödevlerim</h2>
                                 {assignments.length === 0 ? (
                                     <p className="text-gray-500">Şu an için hiç ödevin yok.</p>
@@ -179,7 +175,7 @@ export default function StudentDashboard() {
                                                 <p className="text-gray-600 text-sm mb-4">{a.description}</p>
                                                 <div className="text-xs text-gray-500 mb-4">Son Teslim: {new Date(a.due_date).toLocaleString('tr-TR')}</div>
                                                 {a.status === 'PENDING' && (
-                                                    <button onClick={() => markAsCompleted(a.id)} className="w-full bg-teal-600 text-white font-medium py-2 rounded">
+                                                    <button onClick={() => markAsCompleted(a.id)} className="app-btn-primary w-full py-2">
                                                         Tamamlandı Olarak İşaretle
                                                     </button>
                                                 )}
@@ -192,7 +188,7 @@ export default function StudentDashboard() {
 
                         {/* YENİ: SINAV SONUÇLARI */}
                         {activeTab === 'exams' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Sonuçlarım</h2>
                                 {exams.length === 0 ? (
                                     <p className="text-gray-500">Henüz girilmiş bir sınav notun bulunmuyor.</p>
@@ -209,7 +205,7 @@ export default function StudentDashboard() {
                                             </thead>
                                             <tbody className="divide-y divide-gray-200">
                                                 {exams.map(e => (
-                                                    <tr key={e.id} className="hover:bg-teal-50">
+                                                    <tr key={e.id} className="hover:bg-student-500/10">
                                                         <td className="p-4 font-bold text-gray-800">{e.exam_name}</td>
                                                         <td className="p-4 text-sm text-gray-600">{new Date(e.exam_date).toLocaleDateString('tr-TR')}</td>
                                                         <td className="p-4 text-sm text-gray-600">{e.notes || '-'}</td>
@@ -225,7 +221,7 @@ export default function StudentDashboard() {
 
                         {/* YENİ: MATERYALLER */}
                         {activeTab === 'resources' && (
-                            <div className="bg-white p-6 rounded-lg shadow-sm">
+                            <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Ders Materyalleri</h2>
                                 {resources.length === 0 ? (
                                     <p className="text-gray-500">Henüz paylaşılmış bir materyal bulunmuyor.</p>
@@ -248,6 +244,22 @@ export default function StudentDashboard() {
                                 )}
                             </div>
                         )}
+
+                        {/* EĞİTMEN VİTRİNİ SEKMESİ */}
+                        {activeTab === 'marketplace' && (
+                            <MarketplacePanel
+                                onMessageTeacher={(teacherUserId) => {
+                                    setMessagesInitialUserId(teacherUserId);
+                                    setActiveTab('messages');
+                                }}
+                            />
+                        )}
+
+                        {/* MESAJLARIM SEKMESİ */}
+                        {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
+
+                        {/* TAKVİM SEKMESİ */}
+                        {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}
             </div>

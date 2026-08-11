@@ -27,8 +27,15 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = TeacherProfile
         # 'role' verisini de React'e gönderiyoruz:
-        fields = ('id','user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate', 'profile_picture', 'is_verified', 'average_rating', 'review_count')
-        
+        fields = ('id', 'user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate',
+                   'profile_picture', 'is_verified', 'average_rating', 'review_count',
+                   'diploma_document', 'verification_status', 'verification_note')
+        # GÜVENLİK: is_verified/verification_status/verification_note sadece admin tarafından
+        # (ayrı bir uçtan) değiştirilebilir. Bunlar burada yazılabilir olsaydı, öğretmen kendi
+        # profilini PATCH ederken "is_verified": true göndererek kendini doğrulanmış gösterebilirdi.
+        # diploma_document ise bilinçli olarak yazılabilir bırakıldı: öğretmen belgesini buradan yükler.
+        read_only_fields = ('is_verified', 'verification_status', 'verification_note')
+
 class ChildSummarySerializer(serializers.ModelSerializer):
     """Veli panelinde bağlı öğrencileri listelemek için hafif serializer (StudentProfileSerializer'ı
     kullanırsak parent alanı üzerinden içiçe geçme/döngü oluşur, o yüzden ayrı ve sade tutuyoruz)"""
@@ -60,6 +67,16 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('email', 'first_name', 'last_name', 'password', 'role')
+
+    def validate_role(self, value):
+        # GÜVENLİK: Bu uç (/accounts/register/) AllowAny, yani herkes doğrudan API'ye istek
+        # atabilir. Frontend formu rol seçimini öğretmen/öğrenci/veli ile sınırlasa da,
+        # backend bunu zorunlu kılmazsa biri role="ADMIN" göndererek admin hesabı açabilir.
+        # Kayıttan admin hesabı asla açılamaz; admin hesapları ayrıca (örn. yönetici tarafından) oluşturulmalı.
+        allowed = {'STUDENT', 'TEACHER', 'PARENT'}
+        if value not in allowed:
+            raise serializers.ValidationError("Geçersiz rol. Yalnızca öğrenci, öğretmen veya veli olarak kayıt olabilirsiniz.")
+        return value
 
     def create(self, validated_data):
         # Şifreyi güvenli bir şekilde hashleyerek kullanıcıyı oluşturuyoruz

@@ -1,9 +1,22 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
+
+// Kullanıcının rolüne göre ait olduğu dashboard adresini döner (Mesajlarım sekmesine
+// yönlendirmek için kullanılır; roller App.jsx'teki RoleRouter ile birebir aynı)
+const getDashboardPath = (user) => {
+    const role = user?.role || user?.user?.role;
+    if (role === 'TEACHER') return '/teacher';
+    if (role === 'STUDENT') return '/student';
+    if (role === 'PARENT') return '/parent';
+    if (role === 'ADMIN') return '/admin';
+    return '/login';
+};
 
 export default function InternalMarketplace() {
     const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -57,11 +70,21 @@ export default function InternalMarketplace() {
                                 <div>
                                     <h3 className="font-bold text-lg text-gray-900 flex items-center gap-1">
                                         {teacher.first_name} {teacher.last_name}
-                                        {teacher.is_verified && <span className="text-blue-500 text-sm" title="Doğrulanmış Eğitmen">✔</span>}
                                     </h3>
                                     <p className="text-blue-600 text-sm font-medium">{teacher.title || 'Eğitmen'}</p>
+                                    {teacher.is_verified ? (
+                                        <p className="text-green-600 text-xs font-bold mt-0.5">✓ Doğrulanmış Öğretmen</p>
+                                    ) : (
+                                        <p className="text-red-600 text-xs font-bold mt-0.5">⚠ Doğrulanmamış Öğretmen</p>
+                                    )}
                                 </div>
                             </div>
+
+                            {!teacher.is_verified && (
+                                <p className="text-xs text-red-500 bg-red-50 border border-red-100 rounded-lg px-3 py-2 mb-4">
+                                    Sistemimiz tarafından doğrulanmamış öğretmenler ile çalışmanız önerilmez.
+                                </p>
+                            )}
 
                             {/* Biyografi */}
                             <p className="text-gray-600 text-sm mb-6 flex-1 line-clamp-3">
@@ -81,7 +104,7 @@ export default function InternalMarketplace() {
 
                                     {/* MEVCUT MESAJ AT BUTONU */}
                                     <button
-                                        onClick={() => navigate(`/messages?user_id=${teacher.user_id}`)}
+                                        onClick={() => navigate(getDashboardPath(user), { state: { openMessagesWith: teacher.user_id } })}
                                         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm flex-1 sm:flex-none"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

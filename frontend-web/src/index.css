@@ -30,6 +30,12 @@
     --color-parent-600: #93394C;
     --color-parent-700: #742B3B;
 
+    /* Admin aksanı: çivit mavisi — otorite ve tarafsızlık (öğretmen/öğrenci/veli renklerinden ayrı) */
+    --color-admin-400: #7C93E0;
+    --color-admin-500: #5875D6;
+    --color-admin-600: #3E5BC0;
+    --color-admin-700: #2F469A;
+
     /* Durum renkleri */
     --color-success-500: #16A34A;
     --color-warning-500: #D97706;
@@ -63,6 +69,12 @@
         --role-accent-hover: var(--color-parent-700);
         --role-accent-soft: color-mix(in srgb, var(--color-parent-500) 12%, white);
         --role-text-accent: var(--color-parent-700);
+    }
+    .role-admin {
+        --role-accent: var(--color-admin-600);
+        --role-accent-hover: var(--color-admin-700);
+        --role-accent-soft: color-mix(in srgb, var(--color-admin-500) 12%, white);
+        --role-text-accent: var(--color-admin-700);
     }
 }
 

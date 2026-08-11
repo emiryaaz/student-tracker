@@ -58,7 +58,10 @@ class MessageSerializer(serializers.ModelSerializer):
 class MatchRequestSerializer(serializers.ModelSerializer):
     student_name = serializers.CharField(source='student.get_full_name', read_only=True)
     teacher_name = serializers.CharField(source='teacher.get_full_name', read_only=True)
-    
+    # Veli talebi gönderiyorsa, hangi çocuğu için gönderdiğini bu alanla belirtir.
+    # Öğrenci kendi adına gönderirken buna gerek yok (request.user zaten öğrenci olur).
+    student_id = serializers.IntegerField(write_only=True, required=False, help_text="Veli ise: talebin hangi öğrencisi için olduğu")
+
     class Meta:
         model = MatchRequest
         fields = '__all__'
