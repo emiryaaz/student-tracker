@@ -6,3 +6,5 @@ db.sqlite3
 .idea/
 postgres_data/
 frontend-web/node_modules/
+backend/staticfiles/
+backend/media/

@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 
 const getDashboardPath = (user) => {
     const role = user?.role || user?.user?.role;
@@ -214,7 +214,7 @@ export default function TeacherProfile() {
                             <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
                                 {teacher.profile_picture ? (
                                     <img
-                                        src={`http://localhost:8000${teacher.profile_picture}`}
+                                        src={getMediaUrl(teacher.profile_picture)}
                                         alt={teacher.first_name}
                                         className="h-32 w-32 object-cover rounded-2xl border-4 border-white shadow-lg bg-white"
                                     />

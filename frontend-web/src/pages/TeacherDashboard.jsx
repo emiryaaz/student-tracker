@@ -1,7 +1,7 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import { useLocation } from 'react-router-dom';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 import MessagesPanel from '../components/MessagesPanel';
 import CalendarPanel from '../components/CalendarPanel';
 
@@ -276,7 +276,7 @@ export default function TeacherDashboard() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Profil Fotoğrafı</label>
                                             {profileData?.profile_picture && (
                                                 <div className="mb-2">
-                                                    <img src={`http://localhost:8000${profileData.profile_picture}`} alt="Mevcut Profil" className="h-20 w-20 object-cover rounded-full border border-gray-200" />
+                                                    <img src={getMediaUrl(profileData.profile_picture)} alt="Mevcut Profil" className="h-20 w-20 object-cover rounded-full border border-gray-200" />
                                                 </div>
                                             )}
                                             <input name="profile_picture" type="file" accept="image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />
@@ -286,7 +286,7 @@ export default function TeacherDashboard() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Diploma / Doğrulama Belgesi</label>
                                             {profileData?.diploma_document && (
                                                 <p className="text-xs text-gray-500 mb-2">
-                                                    Yüklü belge: <a href={`http://localhost:8000${profileData.diploma_document}`} target="_blank" rel="noreferrer" className="text-teacher-700 hover:underline">Görüntüle ↗</a>
+                                                    Yüklü belge: <a href={getMediaUrl(profileData.diploma_document)} target="_blank" rel="noreferrer" className="text-teacher-700 hover:underline">Görüntüle ↗</a>
                                                 </p>
                                             )}
                                             <input name="diploma_document" type="file" accept="application/pdf,image/*" className="w-full border border-gray-300 p-2 rounded bg-gray-50" />

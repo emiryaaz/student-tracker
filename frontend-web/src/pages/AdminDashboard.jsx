@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 
 const STATUS_LABELS = {
     NOT_SUBMITTED: 'Belge Yüklenmedi',
@@ -114,7 +114,7 @@ export default function AdminDashboard() {
                                         <div className="mt-3">
                                             {teacher.diploma_document ? (
                                                 <a
-                                                    href={`http://localhost:8000${teacher.diploma_document}`}
+                                                    href={getMediaUrl(teacher.diploma_document)}
                                                     target="_blank"
                                                     rel="noreferrer"
                                                     className="text-admin-700 hover:underline text-sm font-semibold"

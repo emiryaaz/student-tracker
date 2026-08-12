@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 
 const getDashboardPath = (user) => {
     const role = user?.role || user?.user?.role;
@@ -55,7 +55,7 @@ export default function InternalMarketplace() {
                         <div key={teacher.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition relative">
                             <div className="flex items-center gap-4 mb-4">
                                 {teacher.profile_picture ? (
-                                    <img src={`http://localhost:8000${teacher.profile_picture}`} alt={teacher.first_name} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
+                                    <img src={getMediaUrl(teacher.profile_picture)} alt={teacher.first_name} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
                                 ) : (
                                     <div className="w-16 h-16 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xl font-bold">
                                         {teacher.first_name ? teacher.first_name[0] : '?'}

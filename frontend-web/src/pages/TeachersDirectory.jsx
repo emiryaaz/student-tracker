@@ -1,7 +1,7 @@
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../services/api';
+import api, { getMediaUrl } from '../services/api';
 
 export default function TeachersDirectory() {
     const { user } = useContext(AuthContext);
@@ -66,7 +66,7 @@ export default function TeachersDirectory() {
                                 <div className="px-6 pb-6 relative flex-1 flex flex-col">
                                     <div className="-mt-12 mb-4 flex justify-center">
                                         {teacher.profile_picture ? (
-                                            <img src={`http://localhost:8000${teacher.profile_picture}`} alt={teacher.first_name} className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-md bg-white" />
+                                            <img src={getMediaUrl(teacher.profile_picture)} alt={teacher.first_name} className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-md bg-white" />
                                         ) : (
                                             <div className="h-24 w-24 rounded-full border-4 border-white shadow-md bg-gray-200 flex items-center justify-center text-gray-500 text-2xl font-bold">
                                                 {teacher.first_name ? teacher.first_name[0] : '?'}

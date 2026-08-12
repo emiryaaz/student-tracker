@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
+const MEDIA_HOST = API_BASE_URL.replace(/\/api\/?$/, '');
+
+export const getMediaUrl = (path) => {
+    if (!path) return '';
+    if (/^https?:\/\//i.test(path)) return path;
+    return `${MEDIA_HOST}${path}`;
+};
+
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api',
+    baseURL: API_BASE_URL,
 });
 
 api.interceptors.request.use((config) => {
@@ -49,7 +58,7 @@ api.interceptors.response.use(
             isRefreshing = true;
 
             try {
-                const { data } = await axios.post('http://localhost:8000/api/token/refresh/', {
+                const { data } = await axios.post(`${API_BASE_URL}/token/refresh/`, {
                     refresh: refreshToken,
                 });
                 localStorage.setItem('access', data.access);
