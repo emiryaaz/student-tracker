@@ -3,8 +3,6 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
-// Kullanıcının rolüne göre ait olduğu dashboard adresini döner (Mesajlarım sekmesine
-// yönlendirmek için kullanılır; roller App.jsx'teki RoleRouter ile birebir aynı)
 const getDashboardPath = (user) => {
     const role = user?.role || user?.user?.role;
     if (role === 'TEACHER') return '/teacher';
@@ -15,7 +13,7 @@ const getDashboardPath = (user) => {
 };
 
 export default function TeacherProfile() {
-    const { id } = useParams(); // URL'den öğretmenin ID'sini alır
+    const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
 
@@ -31,11 +29,8 @@ export default function TeacherProfile() {
     const [reviewSubmitting, setReviewSubmitting] = useState(false);
     const [reviewError, setReviewError] = useState('');
 
-    // VELİ İSE: bağlı çocuk listesi + talebin hangi çocuk için gönderileceği
     const [children, setChildren] = useState([]);
     const [selectedChildId, setSelectedChildId] = useState('');
-    // Bu öğretmenle ilgili, giriş yapan kullanıcının (öğrenci kendisi ya da velinin
-    // çocukları) daha önce gönderdiği talepler — tekrar talep göndermeyi engellemek için
     const [myRequests, setMyRequests] = useState([]);
     const [requestError, setRequestError] = useState('');
     const [requestSubmitting, setRequestSubmitting] = useState(false);
@@ -46,19 +41,16 @@ export default function TeacherProfile() {
     const isParent = myRole === 'PARENT';
     const myReview = reviews.find(r => Number(r.reviewer) === Number(myId));
 
-    // Öğrenci için: bu öğretmene daha önce attığı talep (varsa)
     const myOwnRequest = isStudent
         ? myRequests.find(r => Number(r.teacher) === Number(teacher?.user_id))
         : null;
 
-    // Veli için: modalda seçtiği çocuğun bu öğretmene daha önce gönderilmiş talebi (varsa)
     const selectedChildRequest = isParent && selectedChildId
         ? myRequests.find(r => Number(r.teacher) === Number(teacher?.user_id) && Number(r.student) === Number(selectedChildId))
         : null;
 
     useEffect(() => {
         if (!user) return;
-        // Öğrencinin kendi, ya da velinin çocukları adına gönderdiği talepleri çek
         api.get('/school/match-requests/')
             .then(res => setMyRequests(Array.isArray(res.data) ? res.data : []))
             .catch(err => console.error('Talepler çekilemedi:', err));
@@ -71,7 +63,6 @@ export default function TeacherProfile() {
     }, [user, isParent]);
 
     useEffect(() => {
-        // Öğretmenin detay bilgilerini çeken endpoint (herkese açık)
         api.get(`/accounts/teachers/${id}/`)
             .then(res => {
                 setTeacher(res.data);
@@ -91,6 +82,7 @@ export default function TeacherProfile() {
 
     useEffect(() => {
         fetchReviews();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const handleReviewSubmit = async (e) => {
@@ -99,14 +91,12 @@ export default function TeacherProfile() {
         setReviewError('');
         try {
             if (myReview) {
-                // Zaten bir değerlendirmesi varsa güncelle
                 await api.patch(`/school/reviews/${myReview.id}/`, { rating: newRating, comment: newComment });
             } else {
                 await api.post('/school/reviews/', { teacher: id, rating: newRating, comment: newComment });
             }
             setNewComment('');
             fetchReviews();
-            // Ortalama puan/adet teacher objesinde de değişmiş olabilir, onu da tazeleyelim
             api.get(`/accounts/teachers/${id}/`).then(res => setTeacher(res.data));
         } catch (error) {
             setReviewError(error.response?.data?.detail || 'Değerlendirme gönderilemedi.');
@@ -116,19 +106,15 @@ export default function TeacherProfile() {
     };
 
     const handleContactClick = () => {
-        const token = localStorage.getItem('access'); // Ekstra güvenlik için token kontrolü
+        const token = localStorage.getItem('access');
 
         if (user || token) {
-            // Kullanıcı giriş yapmışsa doğrudan kendi panelindeki Mesajlarım sekmesine, bu öğretmenle sohbet açık halde gönder
             navigate(getDashboardPath(user), { state: { openMessagesWith: teacher?.user_id } });
         } else {
-            // Giriş yapmamışsa pop-up aç
             setShowAuthModal(true);
         }
     };
 
-    // Backend'den gelen hata gövdesi string, dizi ya da {alan: [...]}, {detail: "..."} gibi
-    // farklı şekillerde olabilir; hepsini okunabilir tek bir cümleye indirger.
     const extractErrorMessage = (error) => {
         const data = error.response?.data;
         if (!data) return 'Bir hata oluştu. Lütfen tekrar deneyin.';
@@ -155,21 +141,14 @@ export default function TeacherProfile() {
 
         if (!token) {
             setShowRequestModal(false);
-            setShowAuthModal(true); // Giriş yapmamışsa uyarı ver
+            setShowAuthModal(true);
             return;
         }
 
-        // ÇÖZÜM NOKTASI: Backend'e profil ID'sini değil, User (Kullanıcı) ID'sini göndermeliyiz.
-        // TeacherProfileSerializer düz "user_id" alanı döner (nested "user" objesi yok),
-        // bu yüzden önce onu kullanmalıyız. URL'deki id, TeacherProfile'ın kendi pk'sı olduğu
-        // için son çare olarak bile kullanılmamalı; yine de eski davranışı bozmamak adına
-        // en son fallback olarak bırakıldı.
         const targetTeacherId = teacher?.user_id || teacher?.user?.id || teacher?.user || id;
 
         setRequestError('');
 
-        // Veli, talebi hangi çocuğu için gönderdiğini seçmek zorunda; aksi halde backend'e
-        // hangi öğrenci için olduğu belirtilmemiş bir talep gider ve bu anlamsız olur.
         if (isParent && !selectedChildId) {
             setRequestError('Lütfen talebi hangi öğrenciniz için gönderdiğinizi seçin.');
             return;
@@ -185,7 +164,6 @@ export default function TeacherProfile() {
             setShowRequestModal(false);
             setNote('');
             setSelectedChildId('');
-            // Listeyi tazele ki buton/durum hemen güncellensin
             api.get('/school/match-requests/')
                 .then(res => setMyRequests(Array.isArray(res.data) ? res.data : []))
                 .catch(err => console.error('Talepler çekilemedi:', err));
@@ -219,7 +197,6 @@ export default function TeacherProfile() {
     return (
         <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
             <div className="max-w-5xl mx-auto">
-                {/* Üst Navigasyon / Geri Dön */}
                 <div className="mb-6 flex justify-between items-center">
                     <button
                         onClick={() => navigate(-1)}
@@ -230,11 +207,9 @@ export default function TeacherProfile() {
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                    {/* Profil Arka Plan Kapak Resmi */}
                     <div className="h-48 bg-gradient-to-r from-blue-600 to-teal-500 relative"></div>
 
                     <div className="px-4 md:px-8 pb-10">
-                        {/* Profil Fotoğrafı ve Temel Bilgiler */}
                         <div className="relative flex flex-col md:flex-row justify-between items-center md:items-end -mt-16 mb-8 gap-6 md:gap-0">
                             <div className="flex flex-col md:flex-row items-center md:items-end gap-6 text-center md:text-left">
                                 {teacher.profile_picture ? (
@@ -290,7 +265,7 @@ export default function TeacherProfile() {
                                     </button>
                                 )}
 
-                                <button 
+                                <button
                                     onClick={handleContactClick}
                                     className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-md flex items-center justify-center gap-2"
                                 >
@@ -300,7 +275,6 @@ export default function TeacherProfile() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-10 border-t border-gray-100 pt-8">
-                            {/* Sol Kolon: Hakkında */}
                             <div className="md:col-span-2 space-y-6">
                                 <div>
                                     <h2 className="text-xl font-bold text-gray-900 mb-3">Eğitmen Hakkında</h2>
@@ -310,7 +284,6 @@ export default function TeacherProfile() {
                                 </div>
                             </div>
 
-                            {/* Sağ Kolon: Bilgiler / Rozetler */}
                             <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 h-max">
                                 <h3 className="font-bold text-gray-900 mb-4">Eğitmen Bilgileri</h3>
                                 <ul className="space-y-4">
@@ -386,7 +359,6 @@ export default function TeacherProfile() {
                 </div>
             </div>
 
-            {/* GİRİŞ YAP UYARI POP-UP'I (MODAL) */}
             {showAuthModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative">
@@ -403,18 +375,16 @@ export default function TeacherProfile() {
                     </div>
                 </div>
             )}
-            {/* DERS TALEBİ GÖNDERME MODALI */}
             {showRequestModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all">
                     <div className="bg-white rounded-2xl p-6 md:p-8 max-w-md w-full shadow-2xl relative">
-                        {/* Kapatma Çarpısı */}
-                        <button 
-                            onClick={() => setShowRequestModal(false)} 
+                        <button
+                            onClick={() => setShowRequestModal(false)}
                             className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition"
                         >
                             &times;
                         </button>
-                        
+
                         <h3 className="text-2xl font-bold text-gray-900 mb-2">Ders Talebi Oluştur</h3>
                         <p className="text-gray-600 mb-6 text-sm">
                             <span className="font-semibold text-gray-800">

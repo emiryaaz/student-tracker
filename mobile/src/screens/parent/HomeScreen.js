@@ -4,10 +4,11 @@ import api from '../../api/client';
 import { AuthContext } from '../../context/AuthContext';
 import { getRoleColors } from '../../theme/colors';
 import { Card, Badge, PrimaryButton, OutlineButton, EmptyState, SectionTitle } from '../../components/UI';
+import Hero from '../../components/Hero';
 
 export default function ParentHomeScreen() {
     const { user, refreshUser } = useContext(AuthContext);
-    const accent = getRoleColors('PARENT').accent;
+    const { accent, accentSoft } = getRoleColors('PARENT');
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -76,6 +77,7 @@ export default function ParentHomeScreen() {
     }
 
     const firstName = user?.user?.first_name || user?.first_name || '';
+    const lastName = user?.user?.last_name || user?.last_name || '';
 
     return (
         <FlatList
@@ -84,8 +86,7 @@ export default function ParentHomeScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[accent]} />}
             ListHeaderComponent={
                 <View>
-                    <Text style={styles.greeting}>Merhaba Veli{firstName ? `, ${firstName}` : ''}</Text>
-                    <Text style={styles.subGreeting}>Öğrencinizin durumunu buradan takip edebilirsiniz.</Text>
+                    <Hero eyebrow="Merhaba Veli" name={`${firstName} ${lastName}`.trim()} subtitle={`${children.length} bağlı öğrenci · durumlarını buradan takip edin`} accent={accent} accentSoft={accentSoft} />
 
                     <Card>
                         <SectionTitle>Öğrenci Ekle</SectionTitle>
@@ -118,7 +119,7 @@ export default function ParentHomeScreen() {
             }
             data={children}
             keyExtractor={(item) => String(item.id)}
-            ListEmptyComponent={<EmptyState text="Henüz bağlı öğrenciniz yok." />}
+            ListEmptyComponent={<EmptyState icon="👨‍👩‍👧" text="Henüz bağlı öğrenciniz yok." />}
             renderItem={({ item }) => (
                 <Card>
                     <View style={styles.rowTop}>
@@ -134,8 +135,6 @@ export default function ParentHomeScreen() {
 
 const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    greeting: { fontSize: 20, fontWeight: '800', color: '#1e293b' },
-    subGreeting: { fontSize: 13, color: '#64748b', marginBottom: 18, marginTop: 2 },
     hint: { fontSize: 12, color: '#64748b', marginBottom: 10 },
     input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9, fontSize: 14 },
     reqName: { fontWeight: '700', fontSize: 14, color: '#1e293b', marginBottom: 6 },

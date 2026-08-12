@@ -9,9 +9,6 @@ import { AuthContext } from '../../context/AuthContext';
 import { getRoleColors } from '../../theme/colors';
 import { EmptyState } from '../../components/UI';
 
-// Web'deki MessagesPanel.jsx ile aynı mantık: ayrı bir "kişi listesi" endpoint'i yok,
-// kişiler mevcut mesaj geçmişinden türetiliyor. Yeni bir sohbet, Vitrin'den "Mesaj Gönder"
-// ile route parametresi olarak openChatWith gelerek başlatılabiliyor.
 export default function MessagesScreen() {
     const { user } = useContext(AuthContext);
     const route = useRoute();
@@ -19,6 +16,14 @@ export default function MessagesScreen() {
 
     const [chatUserId, setChatUserId] = useState(route.params?.openChatWith ? String(route.params.openChatWith) : null);
     const [chatUserName, setChatUserName] = useState(route.params?.openChatWithName || null);
+
+    useEffect(() => {
+        if (route.params?.openChatWith) {
+            setChatUserId(String(route.params.openChatWith));
+            setChatUserName(route.params.openChatWithName || null);
+        }
+    }, [route.params?.openChatWith, route.params?.openChatWithName]);
+
     const [allMessages, setAllMessages] = useState([]);
     const [chatMessages, setChatMessages] = useState([]);
     const [content, setContent] = useState('');

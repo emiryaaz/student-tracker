@@ -1,10 +1,10 @@
 import { useState, useEffect, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext'; // YENİDEN EKLENDİ: En güvenilir kontrolcü
+import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
 export default function TeachersDirectory() {
-    const { user } = useContext(AuthContext); // React state'inden kullanıcının anlık durumunu alıyoruz
+    const { user } = useContext(AuthContext);
     const navigate = useNavigate();
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -21,21 +21,17 @@ export default function TeachersDirectory() {
                 setLoading(false);
             });
     }, []);
-    
-    // İletişime Geç butonuna tıklandığında çalışacak fonksiyon
+
     const handleContactClick = () => {
         if (user) {
-            // Context'te aktif bir kullanıcı varsa (kesin giriş yapılmışsa) iç vitrine yönlendir
             navigate('/marketplace');
         } else {
-            // Kullanıcı yoksa (ziyaretçiyse) pop-up'ı %100 aç
             setShowAuthModal(true);
         }
     };
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col relative">
-            {/* Header (Navigasyon) */}
             <header className="bg-white shadow-sm border-b">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <Link to="/" className="text-2xl font-black text-blue-800 tracking-tighter">
@@ -48,7 +44,6 @@ export default function TeachersDirectory() {
                 </div>
             </header>
 
-            {/* Ana İçerik */}
             <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full">
                 <div className="text-center mb-16">
                     <h1 className="text-4xl md:text-5xl font-extrabold text-gray-900 mb-4">
@@ -69,7 +64,6 @@ export default function TeachersDirectory() {
                             <div key={teacher.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition flex flex-col">
                                 <div className="h-24 bg-gradient-to-r from-blue-500 to-teal-400"></div>
                                 <div className="px-6 pb-6 relative flex-1 flex flex-col">
-                                    {/* Profil Fotoğrafı */}
                                     <div className="-mt-12 mb-4 flex justify-center">
                                         {teacher.profile_picture ? (
                                             <img src={`http://localhost:8000${teacher.profile_picture}`} alt={teacher.first_name} className="h-24 w-24 object-cover rounded-full border-4 border-white shadow-md bg-white" />
@@ -95,7 +89,6 @@ export default function TeachersDirectory() {
                                         </p>
                                     </div>
 
-                                    {/* Aksiyon Alanı */}
                                     <div className="mt-6 pt-6 border-t border-gray-100 flex items-center justify-center gap-4">
                                         <button
                                             onClick={handleContactClick}
@@ -117,14 +110,11 @@ export default function TeachersDirectory() {
                 )}
             </main>
 
-            {/* GİRİŞ YAP UYARI POP-UP'I (MODAL) */}
             {showAuthModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl relative animate-fade-in-up">
-                        {/* Kapat Butonu */}
                         <button onClick={() => setShowAuthModal(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800 text-2xl font-bold">×</button>
 
-                        {/* İkon */}
                         <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                         </div>

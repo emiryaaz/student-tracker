@@ -13,23 +13,18 @@ export default function StudentDashboard() {
     const [activeTab, setActiveTab] = useState('home');
     const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
 
-    // Veri Stateleri
     const [assignments, setAssignments] = useState([]);
-    const [exams, setExams] = useState([]);         // YENİ
-    const [resources, setResources] = useState([]); // YENİ
+    const [exams, setExams] = useState([]);
+    const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Bize gönderilen veli bağlantı talepleri (bir veli, e-postamızı girip bağlanmak isteyince
-    // burada onay/red bekler; onaylamadan hiçbir veli hesabımıza erişemez)
     const [linkRequests, setLinkRequests] = useState([]);
     const [respondingLinkId, setRespondingLinkId] = useState(null);
 
-    // Tüm verileri (Ödev, Sınav, Kaynak) backend'den aynı anda çekiyoruz
     useEffect(() => {
         const fetchAllData = async () => {
             try {
-                // Promise.all yerine allSettled: biri başarısız olsa bile diğer ikisi ekrana yansısın
                 const [resAssignments, resExams, resResources] = await Promise.allSettled([
                     api.get('/school/assignments/'),
                     api.get('/school/exams/'),
@@ -50,7 +45,6 @@ export default function StudentDashboard() {
         fetchAllData();
     }, []);
 
-    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
     useEffect(() => {
         if (location.state?.openMessagesWith) {
             setActiveTab('messages');
@@ -117,7 +111,6 @@ export default function StudentDashboard() {
 
     return (
         <div className="role-student flex h-screen bg-gray-50 relative">
-            {/* SOL MENÜ */}
             <div className="app-sidebar">
                 <div className="app-sidebar-logo">
                     <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
@@ -155,7 +148,6 @@ export default function StudentDashboard() {
                 </div>
             </div>
 
-            {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
                 {activeTab === 'home' && (
                     <header className="mb-8">
@@ -169,10 +161,8 @@ export default function StudentDashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* ÖZET EKRANI */}
                         {activeTab === 'home' && (
                             <div className="space-y-8">
-                                {/* GELEN VELİ BAĞLANTI TALEPLERİ */}
                                 {linkRequests.length > 0 && (
                                     <div className="app-card">
                                         <h2 className="text-lg font-bold mb-4">Veli Bağlantı Talepleri</h2>
@@ -221,7 +211,6 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
-                        {/* ÖDEVLERİM */}
                         {activeTab === 'assignments' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Tüm Ödevlerim</h2>
@@ -251,7 +240,6 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
-                        {/* YENİ: SINAV SONUÇLARI */}
                         {activeTab === 'exams' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Sonuçlarım</h2>
@@ -284,7 +272,6 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
-                        {/* YENİ: MATERYALLER */}
                         {activeTab === 'resources' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Ders Materyalleri</h2>
@@ -310,7 +297,6 @@ export default function StudentDashboard() {
                             </div>
                         )}
 
-                        {/* EĞİTMEN VİTRİNİ SEKMESİ */}
                         {activeTab === 'marketplace' && (
                             <MarketplacePanel
                                 onMessageTeacher={(teacherUserId) => {
@@ -320,10 +306,8 @@ export default function StudentDashboard() {
                             />
                         )}
 
-                        {/* MESAJLARIM SEKMESİ */}
                         {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
 
-                        {/* TAKVİM SEKMESİ */}
                         {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}

@@ -20,7 +20,6 @@ class TeacherStudentsViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         return TutoringRelation.objects.filter(tutor__user=self.request.user, is_active=True)
 
-# AKILLI FİLTRELEME SINIFI
 class BaseRoleViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -35,10 +34,6 @@ class BaseRoleViewSet(viewsets.ModelViewSet):
         return self.queryset.none()
 
     def perform_create(self, serializer):
-        # GÜVENLİK DÜZELTMESİ: get_queryset sadece GET isteklerini filtreler; POST bu kontrolden
-        # geçmediği için, bu olmadan herhangi bir giriş yapmış kullanıcı (öğrenci/veli dahil)
-        # kendisiyle ilgisi olmayan bir "relation" ID'si vererek sahte ödev/sınav/kaynak
-        # oluşturabiliyordu. Sadece öğretmen, sadece kendi öğrencisi için kayıt açabilir.
         user = self.request.user
         if user.role != 'TEACHER':
             raise PermissionDenied("Bu kaydı yalnızca öğretmenler oluşturabilir.")
@@ -48,10 +43,6 @@ class BaseRoleViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def perform_update(self, serializer):
-        # GÜVENLİK DÜZELTMESİ: get_queryset bir öğrencinin sadece kendi kaydını görmesine izin
-        # verir, ama bunu istediği alanla güncelleyebileceği anlamına gelmemeli. Varsayılan
-        # olarak güncellemeyi de öğretmenle sınırlıyoruz; öğrencinin ödev durumunu işaretleme
-        # gibi özel bir izin gereken yerlerde (AssignmentViewSet) bu metod ayrıca override edilir.
         if self.request.user.role != 'TEACHER':
             raise PermissionDenied("Bu kaydı yalnızca öğretmenler düzenleyebilir.")
         serializer.save()
@@ -61,7 +52,6 @@ class BaseRoleViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("Bu kaydı yalnızca öğretmenler silebilir.")
         instance.delete()
 
-# Tüm modelleri tek satırla akıllı filtreye bağladık
 class AssignmentViewSet(BaseRoleViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
@@ -69,7 +59,6 @@ class AssignmentViewSet(BaseRoleViewSet):
     def perform_update(self, serializer):
         user = self.request.user
         if user.role == 'STUDENT':
-            # Öğrenci sadece kendi ödevinin durumunu (status) işaretleyebilir, başka alanı değiştiremez
             if set(serializer.validated_data.keys()) - {'status'}:
                 raise PermissionDenied("Öğrenciler yalnızca ödev durumunu güncelleyebilir.")
             serializer.save()
@@ -93,39 +82,29 @@ class MessageListCreateView(generics.ListCreateAPIView):
         chat_user_id = self.request.query_params.get('user_id')
 
         if chat_user_id:
-            # Karşı taraftan gelen mesajları otomatik "Okundu" işaretle
             Message.objects.filter(sender_id=chat_user_id, receiver=user, is_read=False).update(is_read=True)
-            
-            # LÜTFEN DİKKAT: En sondaki .order_by('timestamp') kısmında parantezler eksiksiz olmalı
+
             return Message.objects.filter(
                 (Q(sender=user) & Q(receiver_id=chat_user_id)) |
                 (Q(sender_id=chat_user_id) & Q(receiver=user))
             ).order_by('timestamp')
 
-        # LÜTFEN DİKKAT: En sondaki .order_by('-timestamp') kısmında parantezler eksiksiz olmalı
         return Message.objects.filter(Q(sender=user) | Q(receiver=user)).order_by('-timestamp')
 
     def perform_create(self, serializer):
-        # Mesaj gönderildiğinde 'sender' kısmını otomatik olarak istek atan kullanıcı yaparız
         serializer.save(sender=self.request.user)
 
 class UnreadMessageCountView(APIView):
     def get(self, request):
-        # Sadece bana gelen ve okunmamış olan mesajları say
         count = Message.objects.filter(receiver=request.user, is_read=False).count()
         return Response({'unread_count': count})
 
-# 1. İstekleri Listeleme ve Oluşturma
 class MatchRequestListCreateView(generics.ListCreateAPIView):
     serializer_class = MatchRequestSerializer
 
     def get_queryset(self):
         user = self.request.user
 
-        # Öğretmen kendine gelen, öğrenci kendi gönderdiği talepleri görür.
-        # Veli için 'student=user' hiçbir zaman eşleşmez (veli kendisi öğrenci değildir);
-        # bu yüzden velinin çocukları adına gönderdiği talepleri de görebilmesi için
-        # ayrıca 'student__student_profile__parent__user=user' ile eşleştiriyoruz.
         if user.role == 'PARENT':
             return MatchRequest.objects.filter(
                 student__student_profile__parent__user=user
@@ -138,11 +117,6 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
 
-        # Talebin gerçekte HANGİ ÖĞRENCİ için olduğunu belirle:
-        # - Öğrenci kendi adına talep gönderiyorsa hedef öğrenci kendisidir.
-        # - Veli, bağlı olduğu çocuklarından birini seçip onun adına talep gönderebilir;
-        #   bu olmadan veli, MatchRequest.student alanına yanlışlıkla kendi kullanıcı
-        #   ID'sini yazıp "kendisi için ders talep etmiş" gibi anlamsız bir kayıt açardı.
         if user.role == 'STUDENT':
             target_student = user
         elif user.role == 'PARENT':
@@ -158,9 +132,6 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
 
         teacher = serializer.validated_data.get('teacher')
 
-        # Aynı öğrenci - öğretmen çifti için zaten kabul edilmiş bir talep varsa (yani öğrenci
-        # zaten bu öğretmenden ders alıyorsa) veya cevap bekleyen bir talep varsa tekrar talep
-        # gönderilmesine izin verme. Reddedilmiş bir talepten sonra tekrar denemek serbest.
         existing = MatchRequest.objects.filter(student=target_student, teacher=teacher)
         if existing.filter(status='ACCEPTED').exists():
             raise ValidationError("Bu öğrenci zaten bu öğretmenden ders alıyor, tekrar talep gönderilemez.")
@@ -168,11 +139,10 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
             raise ValidationError("Bu öğretmene zaten cevap bekleyen bir talep var.")
 
         serializer.save(student=target_student)
-# 2. Öğretmenin İsteği Onaylaması / Reddetmesi
+
 class MatchRequestRespondView(APIView):
     def patch(self, request, pk):
         try:
-            # Sadece bu öğretmene ait olan isteği bul
             match_request = MatchRequest.objects.get(pk=pk, teacher=request.user)
         except MatchRequest.DoesNotExist:
             return Response({"error": "Talep bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
@@ -182,7 +152,6 @@ class MatchRequestRespondView(APIView):
             match_request.status = new_status
             match_request.save()
 
-            # HARİKA DETAY: Eğer öğretmen kabul ederse, yarına otomatik "İlk Ders" etkinliği oluştur
             if new_status == 'ACCEPTED':
                 teacher_profile, _ = TeacherProfile.objects.get_or_create(user=match_request.teacher)
                 student_profile, _ = StudentProfile.objects.get_or_create(user=match_request.student)
@@ -192,23 +161,20 @@ class MatchRequestRespondView(APIView):
                     subject=None,
                 )
 
-                
-                start = timezone.now() + timedelta(days=1) # Yarın aynı saat
+                start = timezone.now() + timedelta(days=1)
                 CalendarEvent.objects.create(
                     title=f"{match_request.student.first_name} ile İlk Ders",
                     event_type='LESSON',
                     creator=request.user,
                     student=match_request.student,
                     start_time=start,
-                    end_time=start + timedelta(hours=1) # 1 Saat sürecek
+                    end_time=start + timedelta(hours=1)
                 )
 
             return Response({"message": f"Talep {new_status} olarak güncellendi."})
         return Response({"error": "Geçersiz durum."}, status=status.HTTP_400_BAD_REQUEST)
 
 class CalendarEventViewSet(viewsets.ModelViewSet):
-    """Takvim: öğretmen kendi oluşturduğu etkinlikleri, öğrenci kendi adına
-    açılmış etkinlikleri, veli ise çocuğunun etkinliklerini görür."""
     serializer_class = CalendarEventSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -225,16 +191,11 @@ class CalendarEventViewSet(viewsets.ModelViewSet):
         return CalendarEvent.objects.none()
 
     def perform_create(self, serializer):
-        # Aynı güvenlik boşluğu: rol kontrolü olmadan bir öğrenci/veli de POST atıp
-        # kendi adına veya başkası adına takvim etkinliği oluşturabilirdi.
         if self.request.user.role != 'TEACHER':
             raise PermissionDenied("Takvim etkinliğini yalnızca öğretmenler oluşturabilir.")
         serializer.save(creator=self.request.user)
 
 class TeacherReviewViewSet(viewsets.ModelViewSet):
-    """Öğretmen değerlendirmeleri: herkes (giriş yapmasa bile) okuyabilir; sadece o
-    öğretmenden gerçekten ders almış (TutoringRelation'ı olan) bir öğrenci yorum/puan
-    bırakabilir; herkes yalnızca kendi yorumunu düzenleyebilir/silebilir."""
     serializer_class = TeacherReviewSerializer
     permission_classes = [permissions.IsAuthenticatedOrReadOnly]
 

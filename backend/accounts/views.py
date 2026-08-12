@@ -18,8 +18,6 @@ from .serializers import (
 
 
 class IsAdmin(permissions.BasePermission):
-    """Yalnızca ADMIN rolündeki kullanıcıların erişimine izin verir (öğretmen doğrulama
-    onay/red işlemleri gibi hassas admin işlemleri için)."""
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.role == 'ADMIN')
 
@@ -29,18 +27,12 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
 
 class ProfileViewSet(viewsets.ViewSet):
-    """
-    Kullanıcıların kendi profil bilgilerini ve 
-    öğretmenlerin kendi öğrencilerini görebileceği genel ViewSet.
-    """
     permission_classes = [IsAuthenticated]
 
     @action(detail=False, methods=['get', 'patch', 'put'])
     def me(self, request):
-        """Kullanıcının kendi rolüne uygun profil verisini döner veya günceller"""
         user = request.user
-        
-        # 1. GET İsteği (Profil Bilgilerini Getir)
+
         if request.method == 'GET':
             if user.role == 'TEACHER':
                 profile = TeacherProfile.objects.get_or_create(user=user)[0]
@@ -55,50 +47,38 @@ class ProfileViewSet(viewsets.ViewSet):
                 serializer = UserSerializer(user)
             return Response(serializer.data)
 
-        # 2. PATCH/PUT İsteği (Profil Bilgilerini Güncelle)
         if request.method in ['PATCH', 'PUT']:
             if user.role == 'TEACHER':
                 profile = TeacherProfile.objects.get_or_create(user=user)[0]
-                # data=request.data kullanıyoruz ki FormData ile gelen resimleri okuyabilsin
                 serializer = TeacherProfileSerializer(profile, data=request.data, partial=True)
                 if serializer.is_valid():
                     serializer.save()
                     return Response(serializer.data)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+
             return Response({"detail": "Sadece öğretmenler profil güncelleyebilir."}, status=status.HTTP_403_FORBIDDEN)
 
     @action(detail=False, methods=['get'])
     def my_students(self, request):
-        """Eğer kullanıcı öğretmense veya veliyse onlara bağlı öğrencileri listeler"""
         user = request.user
-        
+
         if user.role == 'TEACHER':
-            # DÜZELTME: Burada yanlışlıkla kullanılmayan 'education' app'indeki Enrollment
-            # tablosu sorgulanıyordu (enrollments__teacher__user), o tablo hiçbir yerde
-            # doldurulmadığı için bu her zaman boş dönerdi. Gerçek öğretmen-öğrenci bağlantısı
-            # school.TutoringRelation'da tutuluyor (related_name='tutors_list').
             students = StudentProfile.objects.filter(tutors_list__tutor__user=user, tutors_list__is_active=True).distinct()
             serializer = StudentProfileSerializer(students, many=True)
             return Response(serializer.data)
-            
+
         elif user.role == 'PARENT':
             students = StudentProfile.objects.filter(parent__user=user)
             serializer = StudentProfileSerializer(students, many=True)
             return Response(serializer.data)
-            
+
         return Response(
-            {"detail": "Bu işlemi yapmaya yetkiniz yok."}, 
+            {"detail": "Bu işlemi yapmaya yetkiniz yok."},
             status=status.HTTP_403_FORBIDDEN
         )
 
     @action(detail=False, methods=['post'])
     def link_child(self, request):
-        """Veli, öğrencisinin e-posta adresini girer; bu ARTIK doğrudan bağlamaz, öğrenciye
-        bir bağlantı TALEBİ gönderir. Öğrenci bunu kendi panelinden kabul/red edebilir.
-        Eskiden burası anında bağlıyordu: yani herhangi bir veli, sadece bir öğrencinin
-        e-postasını bilerek onun ödev/sınav/kaynak verilerine öğrencinin haberi bile olmadan
-        erişebiliyordu. Onay adımı bu güvenlik açığını kapatır."""
         user = request.user
         if user.role != 'PARENT':
             return Response({"detail": "Sadece veliler öğrenci bağlayabilir."}, status=status.HTTP_403_FORBIDDEN)
@@ -128,8 +108,6 @@ class ProfileViewSet(viewsets.ViewSet):
 
     @action(detail=False, methods=['post'])
     def unlink_child(self, request):
-        """Veli, hesabına bağlı bir öğrenciyi kendi isteğiyle kaldırabilir (örn. yanlış
-        öğrenci bağlanmışsa)."""
         user = request.user
         if user.role != 'PARENT':
             return Response({"detail": "Sadece veliler öğrenci bağlantısını kaldırabilir."}, status=status.HTTP_403_FORBIDDEN)
@@ -149,31 +127,24 @@ class ProfileViewSet(viewsets.ViewSet):
         return Response(ParentProfileSerializer(parent_profile).data, status=status.HTTP_200_OK)
 
 class TeacherListView(generics.ListAPIView):
-    # Sadece öğretmen profillerini ve bağlı oldukları kullanıcı bilgilerini çeker
     queryset = TeacherProfile.objects.select_related('user').all()
     serializer_class = TeacherProfileSerializer
-    permission_classes = [AllowAny] # Üye olmayanlar da vitrini görebilir
+    permission_classes = [AllowAny]
 
 class TeacherDetailView(generics.RetrieveAPIView):
-    queryset = TeacherProfile.objects.all() # Model ismin neyse onu yaz (örn: TeacherProfile veya Teacher)
-    serializer_class = TeacherProfileSerializer # Serializer ismin
-    permission_classes = [] # Herkesin profili görmesine izin ver
+    queryset = TeacherProfile.objects.all()
+    serializer_class = TeacherProfileSerializer
+    permission_classes = []
 
 class ProfileUpdateView(generics.RetrieveUpdateAPIView):
     serializer_class = TeacherProfileSerializer
-    permission_classes = [IsAuthenticated] # Sadece giriş yapanlar profilini güncelleyebilir
+    permission_classes = [IsAuthenticated]
 
     def get_object(self):
-        # PATCH veya GET isteği atan kişinin (kendi) profilini bulup döndürür
-        # Eğer modelin User ile OneToOne bağlıysa ve related_name 'teacher_profile' ise:
         return self.request.user.teacher_profile
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        # Öğretmen yeni bir diploma/belge yüklediyse, önceki durum (onaylı olsa bile) artık
-        # bu yeni belgeyi kapsamıyor demektir; admin'in tekrar incelemesi için PENDING'e
-        # alıyoruz ve is_verified'ı sıfırlıyoruz. Böylece eski onaylı bir öğretmen, şüpheli
-        # yeni bir belge yükleyip eski onayın arkasına saklanamaz.
         if 'diploma_document' in self.request.FILES:
             instance.verification_status = 'PENDING'
             instance.is_verified = False
@@ -181,8 +152,6 @@ class ProfileUpdateView(generics.RetrieveUpdateAPIView):
 
 
 class TeacherVerificationListView(generics.ListAPIView):
-    """Admin paneli: doğrulama kuyruğu. ?status=PENDING gibi bir filtre verilmezse tüm
-    öğretmenleri (en yeni başta) listeler."""
     serializer_class = TeacherProfileSerializer
     permission_classes = [IsAdmin]
 
@@ -195,8 +164,6 @@ class TeacherVerificationListView(generics.ListAPIView):
 
 
 class TeacherVerificationReviewView(generics.GenericAPIView):
-    """Admin paneli: bir öğretmenin diplomasını onaylar ya da reddeder. Öğretmenin
-    is_verified/verification_status alanlarına dokunabilecek TEK uç burasıdır."""
     serializer_class = TeacherProfileSerializer
     permission_classes = [IsAdmin]
     queryset = TeacherProfile.objects.all()
@@ -220,7 +187,6 @@ class TeacherVerificationReviewView(generics.GenericAPIView):
 
 
 class ParentLinkRequestListView(generics.ListAPIView):
-    """Veli kendi gönderdiği, öğrenci ise kendisine gönderilen bağlantı taleplerini görür."""
     serializer_class = ParentLinkRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -234,9 +200,6 @@ class ParentLinkRequestListView(generics.ListAPIView):
 
 
 class ParentLinkRequestRespondView(generics.GenericAPIView):
-    """Öğrenci, kendisine gelen bir veli bağlantı talebini kabul eder ya da reddeder.
-    StudentProfile.parent alanına dokunabilecek TEK uç burasıdır (öğrencinin rızası olmadan
-    hiçbir veli bir öğrenciye bağlanamaz)."""
     serializer_class = ParentLinkRequestSerializer
     permission_classes = [IsAuthenticated]
 
@@ -266,15 +229,9 @@ class ParentLinkRequestRespondView(generics.GenericAPIView):
 
 
 class PasswordResetRequestView(APIView):
-    """Şifremi unuttum: e-posta ile sıfırlama linki gönderir. Geliştirmede EMAIL_BACKEND
-    'console' olduğu için gerçek e-posta gitmez, link `docker compose logs web` çıktısında
-    görünür (bkz. core/settings.py EMAIL_BACKEND açıklaması)."""
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # GÜVENLİK: Kayıtlı olmayan bir e-posta için farklı bir cevap dönersek, biri bu uca
-        # rastgele e-postalar deneyerek "hangi e-postalar sistemde kayıtlı" diye tarayabilir
-        # (user enumeration). Bu yüzden e-posta var da olsa yok da olsa AYNI cevabı dönüyoruz.
         generic_response = Response(
             {"detail": "Bu e-posta adresine kayıtlı bir hesap varsa, şifre sıfırlama linki gönderildi."},
             status=status.HTTP_200_OK
@@ -309,7 +266,6 @@ class PasswordResetRequestView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    """Linkteki uid/token doğrulanır ve yeni şifre kaydedilir."""
     permission_classes = [AllowAny]
 
     def post(self, request):

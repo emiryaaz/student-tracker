@@ -15,8 +15,6 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        // Refresh token da geçersiz olursa (örn. çok uzun süre uygulama açılmadıysa) api.js
-        // bize haber verir, biz de kullanıcıyı çıkışa alırız.
         setOnSessionExpired(() => {
             logout();
         });
@@ -49,7 +47,6 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
     };
 
-    // Profil güncellendiğinde (örn. diploma yüklendiğinde) context'teki kullanıcıyı tazelemek için
     const refreshUser = async () => {
         try {
             const response = await api.get('/accounts/profiles/me/');

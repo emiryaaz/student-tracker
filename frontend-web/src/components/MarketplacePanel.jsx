@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
-// Dashboard'ların içine gömülü eğitmen vitrini paneli. Aksan rengini kapsayan
-// role-student/role-parent wrapper'ından (--role-accent, --role-accent-soft) devralır.
-// "Mesaj At" tıklanınca sayfadan ayrılmak yerine onMessageTeacher callback'i çağrılır,
-// böylece çağıran dashboard Mesajlarım sekmesine geçip sohbeti orada açabilir.
 export default function MarketplacePanel({ onMessageTeacher }) {
     const navigate = useNavigate();
     const [teachers, setTeachers] = useState([]);
@@ -43,8 +39,6 @@ export default function MarketplacePanel({ onMessageTeacher }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {teachers.map(teacher => (
                 <div key={teacher.id} className="bg-white rounded-xl border border-gray-100 p-6 flex flex-col hover:shadow-md transition relative">
-
-                    {/* Profil Resmi & Temel Bilgiler */}
                     <div className="flex items-center gap-4 mb-4">
                         {teacher.profile_picture ? (
                             <img src={`http://localhost:8000${teacher.profile_picture}`} alt={teacher.first_name} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
@@ -72,12 +66,10 @@ export default function MarketplacePanel({ onMessageTeacher }) {
                         </p>
                     )}
 
-                    {/* Biyografi */}
                     <p className="text-gray-600 text-sm mb-6 flex-1 line-clamp-3">
                         {teacher.bio || 'Henüz bir açıklama eklenmemiş.'}
                     </p>
 
-                    {/* Aksiyon Alanı */}
                     <div className="mt-auto border-t border-gray-100 pt-4 flex flex-wrap gap-3 justify-end items-center">
                         <button
                             onClick={() => navigate(`/teacher/${teacher.id}`)}

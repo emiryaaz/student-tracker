@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, Scro
 import api from '../../api/client';
 import { AuthContext } from '../../context/AuthContext';
 import { PrimaryButton } from '../../components/UI';
+import { brand, ink } from '../../theme/colors';
 
 export default function LoginScreen({ navigation }) {
     const [email, setEmail] = useState('');
@@ -20,7 +21,6 @@ export default function LoginScreen({ navigation }) {
             api.defaults.headers.common['Authorization'] = `Bearer ${access}`;
             const profileResponse = await api.get('/accounts/profiles/me/');
             await login(profileResponse.data, access, refresh);
-            // Navigasyon RootNavigator'da user state'ine göre otomatik değişecek
         } catch (err) {
             setError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
             console.log(err);
@@ -30,92 +30,95 @@ export default function LoginScreen({ navigation }) {
     };
 
     return (
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-            <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-                <Text style={styles.title}>EduTracker</Text>
-                <Text style={styles.subtitle}>Öğrenci Takip Sistemi</Text>
+        <View style={styles.root}>
+            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+                    <View style={styles.brandBlock}>
+                        <View style={styles.logoDot} />
+                        <Text style={styles.logo}>Edu<Text style={{ color: brand.accent }}>Tracker</Text></Text>
+                        <Text style={styles.tagline}>Öğrenci Takip Sistemi</Text>
+                    </View>
 
-                {error ? <Text style={styles.error}>{error}</Text> : null}
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Giriş Yap</Text>
 
-                <View style={styles.field}>
-                    <Text style={styles.label}>E-posta</Text>
-                    <TextInput
-                        style={styles.input}
-                        value={email}
-                        onChangeText={setEmail}
-                        autoCapitalize="none"
-                        keyboardType="email-address"
-                    />
-                </View>
-                <View style={styles.field}>
-                    <Text style={styles.label}>Şifre</Text>
-                    <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
-                </View>
+                        {error ? <Text style={styles.error}>{error}</Text> : null}
 
-                <PrimaryButton title="Giriş Yap" onPress={handleLogin} loading={loading} color="#2563eb" style={{ marginTop: 8 }} />
+                        <View style={styles.field}>
+                            <Text style={styles.label}>E-posta</Text>
+                            <TextInput
+                                style={styles.input}
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                                placeholderTextColor="#94A3B8"
+                            />
+                        </View>
+                        <View style={styles.field}>
+                            <Text style={styles.label}>Şifre</Text>
+                            <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry placeholderTextColor="#94A3B8" />
+                        </View>
 
-                <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.linkWrap}>
-                    <Text style={styles.link}>Şifremi unuttum</Text>
-                </TouchableOpacity>
+                        <PrimaryButton title="Giriş Yap" onPress={handleLogin} loading={loading} color={brand.accent} style={{ marginTop: 6 }} />
 
-                <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkWrap}>
-                    <Text style={styles.link}>Hesabın yok mu? Kayıt ol</Text>
-                </TouchableOpacity>
-            </ScrollView>
-        </KeyboardAvoidingView>
+                        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} style={styles.linkWrap}>
+                            <Text style={styles.link}>Şifremi unuttum</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.registerWrap}>
+                        <Text style={styles.registerText}>Hesabın yok mu? <Text style={styles.registerLink}>Kayıt ol</Text></Text>
+                    </TouchableOpacity>
+                </ScrollView>
+            </KeyboardAvoidingView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flexGrow: 1,
-        justifyContent: 'center',
+    root: { flex: 1, backgroundColor: ink[900] },
+    scroll: { flexGrow: 1, justifyContent: 'center', padding: 26 },
+    brandBlock: { alignItems: 'center', marginBottom: 32 },
+    logoDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: brand.accent, marginBottom: 10 },
+    logo: { fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: -0.5 },
+    tagline: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
         padding: 24,
-        backgroundColor: '#f1f5f9',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        elevation: 6,
     },
-    title: {
-        fontSize: 28,
-        fontWeight: '800',
-        color: '#2563eb',
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontSize: 14,
-        color: '#64748b',
-        textAlign: 'center',
-        marginBottom: 24,
-    },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: ink[900], marginBottom: 18, letterSpacing: -0.3 },
     error: {
         color: '#dc2626',
+        backgroundColor: '#fef2f2',
+        borderRadius: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 10,
         textAlign: 'center',
-        marginBottom: 12,
-        fontSize: 13,
-    },
-    field: {
         marginBottom: 14,
+        fontSize: 12.5,
     },
-    label: {
-        fontSize: 13,
-        fontWeight: '600',
-        color: '#334155',
-        marginBottom: 6,
-    },
+    field: { marginBottom: 16 },
+    label: { fontSize: 12.5, fontWeight: '700', color: '#475569', marginBottom: 6 },
     input: {
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#cbd5e1',
-        borderRadius: 10,
+        backgroundColor: '#F8FAFC',
+        borderWidth: 1.5,
+        borderColor: '#E2E8F0',
+        borderRadius: 12,
         paddingHorizontal: 14,
-        paddingVertical: 10,
+        paddingVertical: 12,
         fontSize: 15,
+        color: ink[900],
     },
-    linkWrap: {
-        marginTop: 14,
-        alignItems: 'center',
-    },
-    link: {
-        color: '#2563eb',
-        fontSize: 13,
-        fontWeight: '600',
-    },
+    linkWrap: { marginTop: 16, alignItems: 'center' },
+    link: { color: brand.accent, fontSize: 13, fontWeight: '700' },
+    registerWrap: { marginTop: 22, alignItems: 'center' },
+    registerText: { color: '#94A3B8', fontSize: 13 },
+    registerLink: { color: '#fff', fontWeight: '700' },
 });

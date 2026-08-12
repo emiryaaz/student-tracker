@@ -4,10 +4,11 @@ import api from '../../api/client';
 import { AuthContext } from '../../context/AuthContext';
 import { getRoleColors } from '../../theme/colors';
 import { Card, Badge, PrimaryButton, OutlineButton, EmptyState, SectionTitle } from '../../components/UI';
+import Hero from '../../components/Hero';
 
 export default function TeacherHomeScreen() {
     const { user } = useContext(AuthContext);
-    const accent = getRoleColors('TEACHER').accent;
+    const { accent, accentSoft } = getRoleColors('TEACHER');
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -52,6 +53,7 @@ export default function TeacherHomeScreen() {
     }
 
     const firstName = user?.user?.first_name || user?.first_name || '';
+    const lastName = user?.user?.last_name || user?.last_name || '';
 
     return (
         <FlatList
@@ -60,7 +62,7 @@ export default function TeacherHomeScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[accent]} />}
             ListHeaderComponent={
                 <View>
-                    <Text style={styles.greeting}>Merhaba Öğretmen{firstName ? `, ${firstName}` : ''}</Text>
+                    <Hero eyebrow="Merhaba Öğretmen" name={`${firstName} ${lastName}`.trim()} subtitle={`${students.length} aktif öğrenci`} accent={accent} accentSoft={accentSoft} />
 
                     {requests.length > 0 && (
                         <View style={{ marginBottom: 20 }}>
@@ -83,12 +85,12 @@ export default function TeacherHomeScreen() {
             }
             data={students}
             keyExtractor={(item) => String(item.id)}
-            ListEmptyComponent={<EmptyState text="Henüz aktif öğrenciniz yok." />}
+            ListEmptyComponent={<EmptyState icon="🎓" text="Henüz aktif öğrenciniz yok." />}
             renderItem={({ item }) => (
                 <Card>
                     <View style={styles.studentRow}>
                         <Text style={styles.studentName}>{item.student?.first_name} {item.student?.last_name}</Text>
-                        {item.subject?.name && <Badge text={item.subject.name} bg={`${accent}22`} color={accent} />}
+                        {item.subject?.name && <Badge text={item.subject.name} bg={accentSoft} color={accent} />}
                     </View>
                     <Text style={styles.studentEmail}>{item.student?.email}</Text>
                 </Card>
@@ -99,7 +101,6 @@ export default function TeacherHomeScreen() {
 
 const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    greeting: { fontSize: 20, fontWeight: '800', color: '#1e293b', marginBottom: 18 },
     reqName: { fontWeight: '700', fontSize: 15, color: '#1e293b' },
     reqSub: { fontSize: 12, color: '#64748b', marginBottom: 10 },
     reqActions: { flexDirection: 'row' },

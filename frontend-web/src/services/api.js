@@ -1,10 +1,9 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:8000/api', // Backend adresimiz
+    baseURL: 'http://localhost:8000/api',
 });
 
-// Her isteğe güncel access token'ı otomatik ekle
 api.interceptors.request.use((config) => {
     const token = localStorage.getItem('access');
     if (token) {
@@ -13,7 +12,6 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
-// Access token süresi dolunca (401) refresh token ile otomatik yenile ve isteği tekrar dene
 let isRefreshing = false;
 let refreshQueue = [];
 

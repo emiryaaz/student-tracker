@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 export default function LandingPage() {
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col">
-            {/* Üst Navigasyon */}
             <header className="bg-white shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
                     <div className="text-2xl font-black text-blue-800 tracking-tighter">
@@ -36,7 +35,6 @@ export default function LandingPage() {
                 </div>
             </header>
 
-            {/* Hero (Ana Görsel) Alanı */}
             <main className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 mt-10 lg:mt-0">
                 <div className="text-center max-w-3xl mx-auto">
                     <h1 className="text-5xl md:text-6xl font-extrabold text-gray-900 tracking-tight mb-6">
@@ -55,7 +53,6 @@ export default function LandingPage() {
                         </Link>
                     </div>
 
-                    {/* Özellikler Kartları */}
                     <div className="mt-20 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                             <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-2xl mb-4">👨‍🏫</div>
@@ -76,7 +73,6 @@ export default function LandingPage() {
                 </div>
             </main>
 
-            {/* Footer */}
             <footer className="bg-white border-t border-gray-200 py-8 mt-12">
                 <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
                     &copy; {new Date().getFullYear()} EduTracker. Tüm hakları saklıdır.

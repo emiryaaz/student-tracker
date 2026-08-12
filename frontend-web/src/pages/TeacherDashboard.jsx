@@ -1,37 +1,32 @@
 import { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import api from '../services/api';
 import MessagesPanel from '../components/MessagesPanel';
 import CalendarPanel from '../components/CalendarPanel';
 
 export default function TeacherDashboard() {
     const { user, logout } = useContext(AuthContext);
-    const navigate = useNavigate();
     const location = useLocation();
-    // SEKME VE VERİ STATELERİ
     const [activeTab, setActiveTab] = useState('home');
     const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
     const [studentsData, setStudentsData] = useState([]);
     const [assignmentsData, setAssignmentsData] = useState([]);
-    const [examsData, setExamsData] = useState([]);       // Sınav verileri
-    const [resourcesData, setResourcesData] = useState([]); // Kaynak verileri
+    const [examsData, setExamsData] = useState([]);
+    const [resourcesData, setResourcesData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [profileData, setProfileData] = useState(null); // YENİ: Profil verisi
+    const [profileData, setProfileData] = useState(null);
 
-    // MODAL STATELERİ
-    const [activeModal, setActiveModal] = useState(null); // 'task', 'exam', 'resource' veya null
+    const [activeModal, setActiveModal] = useState(null);
     const [selectedRelation, setSelectedRelation] = useState(null);
     const [selectedStudentName, setSelectedStudentName] = useState("");
 
-    // FORM STATELERİ
     const [taskData, setTaskData] = useState({ title: '', description: '', due_date: '' });
     const [examData, setExamData] = useState({ exam_name: '', score: '', exam_date: '', notes: '' });
     const [resourceData, setResourceData] = useState({ title: '', url: '' });
     const [unreadCount, setUnreadCount] = useState(0);
     const [requests, setRequests] = useState([]);
 
-    // VERİ ÇEKME FONKSİYONLARI (artık api.js üzerinden; token otomatik eklenir ve süresi dolarsa otomatik yenilenir)
     const fetchData = async (endpoint, setter) => {
         try {
             const response = await api.get(`/school/${endpoint}/`);
@@ -41,7 +36,6 @@ export default function TeacherDashboard() {
         }
     };
 
-    // YENİ: PROFIL VERİSİNİ ÇEKME FONKSİYONU
     const fetchProfile = async () => {
         try {
             const response = await api.get('/accounts/profile/me/');
@@ -59,14 +53,13 @@ export default function TeacherDashboard() {
                 fetchData('assignments', setAssignmentsData),
                 fetchData('exams', setExamsData),
                 fetchData('resources', setResourcesData),
-                fetchProfile() // YENİ: Yüklenirken profili de çek
+                fetchProfile()
             ]);
             setLoading(false);
         };
         fetchAllData();
     }, []);
 
-    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
     useEffect(() => {
         if (location.state?.openMessagesWith) {
             setActiveTab('messages');
@@ -74,14 +67,12 @@ export default function TeacherDashboard() {
         }
     }, [location.state]);
 
-    // YARDIMCI FONKSİYONLAR
     const getTeacherName = () => user?.first_name || user?.user?.first_name || 'Öğretmenimiz';
     const getStudentName = (relationId) => {
         const r = studentsData.find(x => x.id === relationId);
         return r ? `${r.student.first_name} ${r.student.last_name}` : 'Öğrenci';
     };
 
-    // Ödev/Sınav/Kaynak listelerini öğrenciye göre gruplamak için ortak yardımcı fonksiyon
     const groupByStudent = (items) => {
         const groups = {};
         items.forEach(item => {
@@ -103,7 +94,6 @@ export default function TeacherDashboard() {
         setActiveModal(type);
     };
 
-    // FORM GÖNDERME İŞLEMLERİ (POST)
     const handleSubmit = async (e, endpoint, payload, refreshSetter, resetForm) => {
         e.preventDefault();
         try {
@@ -118,7 +108,6 @@ export default function TeacherDashboard() {
         }
     };
 
-    // YENİ: PROFİL GÜNCELLEME İŞLEMİ (PATCH)
     const handleProfileSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData();
@@ -127,25 +116,18 @@ export default function TeacherDashboard() {
         if (e.target.bio.value) formData.append('bio', e.target.bio.value);
         if (e.target.hourly_rate.value) formData.append('hourly_rate', e.target.hourly_rate.value);
 
-        // Fotoğraf seçildiyse ekle
         if (e.target.profile_picture.files.length > 0) {
             formData.append('profile_picture', e.target.profile_picture.files[0]);
         }
 
-        // Diploma/doğrulama belgesi seçildiyse ekle (backend, yeni belge yüklenince
-        // doğrulama durumunu otomatik olarak 'İnceleniyor'a çeker)
         if (e.target.diploma_document.files.length > 0) {
             formData.append('diploma_document', e.target.diploma_document.files[0]);
         }
 
         try {
-            // ÖNEMLİ: Content-Type header'ını burada elle set ETMİYORUZ.
-            // FormData gönderirken tarayıcı/axios boundary değerini kendisi otomatik ekler;
-            // 'multipart/form-data' header'ını elle vermek boundary'siz bıraktığı için
-            // backend formu parse edemez ve profil fotoğrafı yükleme isteği bozulur.
             await api.patch('/accounts/profile/me/', formData);
             alert("Profiliniz başarıyla güncellendi!");
-            fetchProfile(); // Ekrandaki veriyi güncelle
+            fetchProfile();
         } catch (error) {
             console.error("Sunucu hatası:", error);
             alert("Güncelleme başarısız oldu. Lütfen tekrar deneyin.");
@@ -162,8 +144,8 @@ export default function TeacherDashboard() {
             }
         };
 
-        fetchUnreadCount(); // Sayfa açılınca anında çek
-        const interval = setInterval(fetchUnreadCount, 3000); // Her 3 saniyede bir kontrol et
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 3000);
 
         return () => clearInterval(interval);
     }, []);
@@ -184,7 +166,6 @@ export default function TeacherDashboard() {
     const handleRespond = async (id, status) => {
         try {
             await api.patch(`/school/match-requests/${id}/respond/`, { status: status });
-            // Ekranda güncellenmiş durumu anında göstermek için listeyi filtrele veya güncelle
             setRequests(requests.map(req =>
                 req.id === id ? { ...req, status: status } : req
             ));
@@ -195,7 +176,6 @@ export default function TeacherDashboard() {
 
     return (
         <div className="role-teacher flex h-screen bg-gray-100 relative">
-            {/* SOL MENÜ */}
             <div className="app-sidebar">
                 <div className="app-sidebar-logo">
                     <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
@@ -231,7 +211,6 @@ export default function TeacherDashboard() {
                 </div>
             </div>
 
-            {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
                 {activeTab === 'home' && (
                     <header className="mb-8">
@@ -245,12 +224,10 @@ export default function TeacherDashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* PROFIL SEKRESİ */}
                         {activeTab === 'profile' && (
                             <div className="app-card max-w-3xl">
                                 <h2 className="text-2xl font-bold mb-6 text-gray-800">Kişisel Vitrin Ayarlarım</h2>
 
-                                {/* DOĞRULAMA DURUMU */}
                                 <div className={`mb-6 rounded-lg p-4 border ${
                                     profileData?.is_verified ? 'bg-green-50 border-green-200'
                                     : profileData?.verification_status === 'PENDING' ? 'bg-amber-50 border-amber-200'
@@ -324,10 +301,8 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* ANA SAYFA İSTATİSTİKLERİ VE GELEN TALEPLER */}
                         {activeTab === 'home' && (
                             <div className="space-y-8">
-                                {/* Üst Kısım: İstatistik Kartları */}
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
                                         <h3 className="text-gray-500 text-sm font-bold uppercase">Öğrenciler</h3>
@@ -347,7 +322,6 @@ export default function TeacherDashboard() {
                                     </div>
                                 </div>
 
-                                {/* Alt Kısım: Gelen Ders Talepleri */}
                                 <div className="app-card">
                                     <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                                         Gelen Ders Talepleri
@@ -361,8 +335,6 @@ export default function TeacherDashboard() {
                                         <div className="space-y-4">
                                             {requests.map(req => (
                                                 <div key={req.id} className="border border-gray-200 rounded-xl p-4 md:p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition hover:shadow-md bg-white">
-                                                    
-                                                    {/* Öğrenci Bilgisi ve Not */}
                                                     <div className="flex-1">
                                                         <h4 className="font-bold text-gray-900 text-lg">
                                                             {req.student_name}
@@ -378,7 +350,6 @@ export default function TeacherDashboard() {
                                                         </span>
                                                     </div>
 
-                                                    {/* Aksiyon Butonları veya Durum Rozeti */}
                                                     <div className="w-full md:w-auto flex shrink-0">
                                                         {req.status === 'PENDING' ? (
                                                             <div className="flex gap-2 w-full md:w-auto">
@@ -413,7 +384,6 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* ÖĞRENCİLERİM SEKMESİ */}
                         {activeTab === 'students' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Öğrenci Listesi</h2>
@@ -444,7 +414,6 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* ÖDEV TAKİBİ (öğrenciye göre gruplu) */}
                         {activeTab === 'assignments' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Verilen Ödevler</h2>
@@ -486,7 +455,6 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* SINAV NOTLARI SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'exams' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Sonuçları</h2>
@@ -526,7 +494,6 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* KAYNAKLAR SEKMESİ (öğrenciye göre gruplu) */}
                         {activeTab === 'resources' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Paylaşılan Materyaller</h2>
@@ -565,16 +532,13 @@ export default function TeacherDashboard() {
                             </div>
                         )}
 
-                        {/* MESAJLARIM SEKMESİ */}
                         {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
 
-                        {/* TAKVİM SEKMESİ */}
                         {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}
             </div>
 
-            {/* TÜM MODALLAR İÇİN ORTAK KAPSAYICI */}
             {activeModal && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                     <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-2xl">
@@ -587,7 +551,6 @@ export default function TeacherDashboard() {
                             <p className="text-gray-600">Öğrenci: <span className="font-semibold text-teacher-700">{selectedStudentName}</span></p>
                         </div>
 
-                        {/* ÖDEV FORMU */}
                         {activeModal === 'task' && (
                             <form onSubmit={(e) => handleSubmit(e, 'assignments', { ...taskData, status: 'PENDING' }, setAssignmentsData, () => setTaskData({ title: '', description: '', due_date: '' }))} className="space-y-4">
                                 <input type="text" required placeholder="Ödev Başlığı" className="w-full border p-2 rounded" value={taskData.title} onChange={e => setTaskData({ ...taskData, title: e.target.value })} />
@@ -597,7 +560,6 @@ export default function TeacherDashboard() {
                             </form>
                         )}
 
-                        {/* SINAV FORMU */}
                         {activeModal === 'exam' && (
                             <form onSubmit={(e) => handleSubmit(e, 'exams', examData, setExamsData, () => setExamData({ exam_name: '', score: '', exam_date: '', notes: '' }))} className="space-y-4">
                                 <input type="text" required placeholder="Sınav/Konu Adı (Örn: Matematik Vize)" className="w-full border p-2 rounded" value={examData.exam_name} onChange={e => setExamData({ ...examData, exam_name: e.target.value })} />
@@ -608,7 +570,6 @@ export default function TeacherDashboard() {
                             </form>
                         )}
 
-                        {/* KAYNAK FORMU */}
                         {activeModal === 'resource' && (
                             <form onSubmit={(e) => handleSubmit(e, 'resources', resourceData, setResourcesData, () => setResourceData({ title: '', url: '' }))} className="space-y-4">
                                 <input type="text" required placeholder="Kaynak Başlığı (Örn: Türev PDF)" className="w-full border p-2 rounded" value={resourceData.title} onChange={e => setResourceData({ ...resourceData, title: e.target.value })} />

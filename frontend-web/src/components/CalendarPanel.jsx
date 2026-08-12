@@ -7,7 +7,6 @@ const MONTH_NAMES = [
     'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
 ];
 
-// Backend'den gelen ISO tarih/saat metnini yerel 'YYYY-MM-DD' anahtarına çevirir
 const toDateKey = (isoString) => {
     if (!isoString) return null;
     const d = new Date(isoString);
@@ -22,15 +21,13 @@ const formatTime = (isoString) => {
     return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 };
 
-// Dashboard'ların içine gömülü takvim paneli. Aksan rengini kapsayan
-// role-teacher/role-student/role-parent wrapper'ından (--role-accent, --role-accent-soft) devralır.
 export default function CalendarPanel() {
     const [loading, setLoading] = useState(true);
     const [lessons, setLessons] = useState([]);
     const [homeworks, setHomeworks] = useState([]);
     const [exams, setExams] = useState([]);
 
-    const [viewDate, setViewDate] = useState(new Date()); // Görüntülenen ay
+    const [viewDate, setViewDate] = useState(new Date());
     const [selectedDate, setSelectedDate] = useState(toDateKey(new Date().toISOString()));
 
     useEffect(() => {
@@ -54,7 +51,6 @@ export default function CalendarPanel() {
         fetchAll();
     }, []);
 
-    // Tarih -> { lessons: [], homeworks: [], exams: [] } eşlemesi
     const eventsByDate = useMemo(() => {
         const map = {};
         const ensure = (key) => {
@@ -76,7 +72,6 @@ export default function CalendarPanel() {
         return map;
     }, [lessons, homeworks, exams]);
 
-    // Ay ızgarasını oluştur (Pazartesi başlangıçlı, 6 hafta x 7 gün)
     const monthGrid = useMemo(() => {
         const year = viewDate.getFullYear();
         const month = viewDate.getMonth();
@@ -115,7 +110,6 @@ export default function CalendarPanel() {
                 <p className="text-center text-gray-500 py-20">Takvim yükleniyor...</p>
             ) : (
                 <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    {/* AY NAVİGASYONU */}
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-[var(--role-accent)] text-white">
                         <button onClick={goPrevMonth} className="w-9 h-9 rounded-full hover:bg-white/20 transition flex items-center justify-center text-xl">‹</button>
                         <div className="text-center">
@@ -127,14 +121,12 @@ export default function CalendarPanel() {
                         </div>
                     </div>
 
-                    {/* HAFTA GÜNLERİ */}
                     <div className="grid grid-cols-7 border-b border-gray-100 bg-gray-50">
                         {DAY_NAMES.map(d => (
                             <div key={d} className="py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wide">{d}</div>
                         ))}
                     </div>
 
-                    {/* GÜN IZGARASI */}
                     <div className="grid grid-cols-7">
                         {monthGrid.map((cellDate, idx) => {
                             const key = toDateKey(cellDate.toISOString());
@@ -169,7 +161,6 @@ export default function CalendarPanel() {
                 </div>
             )}
 
-            {/* SEÇİLİ GÜN DETAYLARI */}
             {!loading && (
                 <div className="mt-6 bg-white rounded-xl border border-gray-100 p-6">
                     <h3 className="text-lg font-bold text-gray-800 mb-1 capitalize">{selectedDateLabel}</h3>
@@ -218,7 +209,6 @@ export default function CalendarPanel() {
                 </div>
             )}
 
-            {/* RENK AÇIKLAMASI */}
             <div className="mt-4 flex items-center gap-6 text-sm text-gray-500">
                 <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-yellow-400" /> Ders</span>
                 <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-green-500" /> Ödev Son Tarihi</span>

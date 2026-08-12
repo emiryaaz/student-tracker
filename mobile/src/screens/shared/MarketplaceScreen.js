@@ -9,9 +9,6 @@ import { AuthContext } from '../../context/AuthContext';
 import { getRoleColors, neutral } from '../../theme/colors';
 import { Card, Badge, PrimaryButton, OutlineButton, EmptyState } from '../../components/UI';
 
-// Öğrenci ve veli panelindeki "Eğitmen Vitrini" sekmesi. Veli, hangi çocuğu için talep
-// gönderdiğini seçmek zorunda (backend bunu zorunlu kılıyor); öğrenci direkt kendi adına
-// talep gönderir. Web'deki TeacherProfile.jsx / InternalMarketplace.jsx ile aynı iş kuralları.
 export default function MarketplaceScreen() {
     const { user } = useContext(AuthContext);
     const navigation = useNavigation();
@@ -23,7 +20,7 @@ export default function MarketplaceScreen() {
     const [children, setChildren] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [childPicker, setChildPicker] = useState(null); // teacher object bekliyor
+    const [childPicker, setChildPicker] = useState(null);
 
     const fetchAll = useCallback(async () => {
         try {

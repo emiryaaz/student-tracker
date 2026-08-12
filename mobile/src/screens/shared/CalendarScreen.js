@@ -13,8 +13,6 @@ const toDateKey = (isoString) => {
 
 const formatTime = (isoString) => new Date(isoString).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-// Web'deki ay ızgaralı CalendarPanel yerine mobilde tarih bazlı gruplanmış ("ajanda")
-// bir liste kullanıyoruz — dokunmatik ekranda daha kullanışlı ve daha az karmaşık.
 export default function CalendarScreen() {
     const { user } = useContext(AuthContext);
     const accent = getRoleColors(user?.role || user?.user?.role).accent;

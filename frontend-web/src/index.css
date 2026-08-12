@@ -1,42 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-    /* Tipografi: başlıklarda Manrope (karakterli, yarı-kalın), gövdede Inter (okunaklı) */
     --font-display: "Manrope", ui-sans-serif, system-ui, sans-serif;
     --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-    /* Nötr taban: sidebar'larda ve koyu alanlarda ortak kullanılan lacivert-gri skala */
     --color-ink-900: #0F172A;
     --color-ink-800: #16223A;
     --color-ink-700: #1E2A3D;
     --color-ink-600: #2C3B52;
     --color-ink-500: #4B5A6E;
 
-    /* Öğretmen aksanı: amber/altın — otorite ve uzmanlık */
     --color-teacher-400: #E4BA6E;
     --color-teacher-500: #D4A24C;
     --color-teacher-600: #B8853A;
     --color-teacher-700: #96692B;
 
-    /* Öğrenci aksanı: turkuaz — enerji ve ilerleme */
     --color-student-400: #4FE0D1;
     --color-student-500: #22C7B8;
     --color-student-600: #159C90;
     --color-student-700: #0F7A71;
 
-    /* Veli aksanı: gül/bordo — sıcaklık ve takip */
     --color-parent-400: #D97E92;
     --color-parent-500: #B45166;
     --color-parent-600: #93394C;
     --color-parent-700: #742B3B;
 
-    /* Admin aksanı: çivit mavisi — otorite ve tarafsızlık (öğretmen/öğrenci/veli renklerinden ayrı) */
     --color-admin-400: #7C93E0;
     --color-admin-500: #5875D6;
     --color-admin-600: #3E5BC0;
     --color-admin-700: #2F469A;
 
-    /* Durum renkleri */
     --color-success-500: #16A34A;
     --color-warning-500: #D97706;
     --color-danger-500: #DC2626;
@@ -48,10 +41,6 @@
         letter-spacing: -0.01em;
     }
 
-    /* ROL PALETLERİ: her panel sadece bu değişkenleri set eden bir wrapper class'ı giyer
-       (role-teacher / role-student / role-parent). Bileşen class'larının hiçbiri renk
-       kodu içermez, hepsi bu değişkenleri okur — böylece tüm paneller tipografi/boyut/
-       yapı olarak birebir aynı kalır, tek fark aksan rengi olur. */
     .role-teacher {
         --role-accent: var(--color-teacher-600);
         --role-accent-hover: var(--color-teacher-700);
@@ -79,7 +68,6 @@
 }
 
 @layer components {
-    /* SIDEBAR — üç panelde de birebir aynı yapı, rengi sadece role-* wrapper'ından alır */
     .app-sidebar {
         width: 16rem;
         background-color: var(--color-ink-800);
@@ -105,7 +93,6 @@
         margin-top: 0.125rem;
     }
 
-    /* NAV BUTONLARI — Mesajlarım / Takvim / sekmeler artık hepsi bu tek class'ı kullanır */
     .app-nav-btn {
         width: 100%;
         text-align: left;
@@ -127,7 +114,6 @@
     }
     .app-nav-btn-active:hover { background-color: var(--role-accent); }
 
-    /* KARTLAR */
     .app-card {
         background-color: white;
         border-radius: 0.75rem;
@@ -135,7 +121,6 @@
         padding: 1.5rem;
     }
 
-    /* BİRİNCİL BUTON (kaydet/gönder gibi ana aksiyonlar) */
     .app-btn-primary {
         background-color: var(--role-accent);
         color: white;

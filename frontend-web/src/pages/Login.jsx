@@ -7,9 +7,8 @@ export default function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
-    
-    // AuthContext'ten login fonksiyonunu çekiyoruz
-    const { login } = useContext(AuthContext); 
+
+    const { login } = useContext(AuthContext);
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -19,17 +18,13 @@ export default function Login() {
             const tokenResponse = await api.post('/token/', { email, password });
             const accessToken = tokenResponse.data.access;
             const refreshToken = tokenResponse.data.refresh;
-            
-            // 2. Adım: Geçici olarak bu istek için header'a token'ı ekle
+
             api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
-            
-            // 3. Adım: Kullanıcının profil bilgilerini ve rolünü çek
+
             const profileResponse = await api.get('/accounts/profiles/me/');
-            
-            // 4. Adım: Hem kullanıcı verisini hem de her iki token'ı Context'e kaydet
+
             login(profileResponse.data, accessToken, refreshToken);
-            
-            // Başarılı girişten sonra Dashboard'a yönlendir
+
             navigate('/dashboard');
         } catch (err) {
             setError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');

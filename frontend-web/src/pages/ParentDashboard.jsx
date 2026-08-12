@@ -13,26 +13,21 @@ export default function ParentDashboard() {
     const [activeTab, setActiveTab] = useState('home');
     const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
 
-    // Veri Stateleri
     const [assignments, setAssignments] = useState([]);
-    const [exams, setExams] = useState([]);         // YENİ
-    const [resources, setResources] = useState([]); // YENİ
+    const [exams, setExams] = useState([]);
+    const [resources, setResources] = useState([]);
     const [loading, setLoading] = useState(true);
     const [unreadCount, setUnreadCount] = useState(0);
 
-    // Bağlı öğrenciler ve öğrenci ekleme formu
     const [children, setChildren] = useState([]);
     const [childEmail, setChildEmail] = useState('');
     const [linking, setLinking] = useState(false);
     const [linkMessage, setLinkMessage] = useState({ type: '', text: '' });
-    // Gönderdiğimiz bağlantı talepleri (öğrenci onaylayana kadar 'Bağlı Öğrenciler'e düşmezler)
     const [sentLinkRequests, setSentLinkRequests] = useState([]);
     const [unlinkingId, setUnlinkingId] = useState(null);
 
-    // Öğrenci panelinde yaptığımız gibi veli için de tüm verileri çekiyoruz
     const fetchAllData = async () => {
         try {
-            // Promise.all yerine allSettled: biri başarısız olsa bile diğer ikisi ekrana yansısın
             const [resAssignments, resExams, resResources] = await Promise.allSettled([
                 api.get('/school/assignments/'),
                 api.get('/school/exams/'),
@@ -54,7 +49,6 @@ export default function ParentDashboard() {
         fetchAllData();
     }, []);
 
-    // Eğitmen Vitrini / Eğitmen Profili gibi dışarıdan gelen "bu kullanıcıyla sohbet aç" isteğini yakala
     useEffect(() => {
         if (location.state?.openMessagesWith) {
             setActiveTab('messages');
@@ -106,8 +100,6 @@ export default function ParentDashboard() {
         setLinking(true);
         setLinkMessage({ type: '', text: '' });
         try {
-            // ARTIK doğrudan bağlamıyor: öğrenciye bir bağlantı talebi gönderiyor, öğrenci
-            // kendi panelinden kabul edene kadar 'Bağlı Öğrenciler' listesine düşmüyor.
             await api.post('/accounts/profiles/link_child/', { student_email: childEmail });
             setChildEmail('');
             setLinkMessage({ type: 'success', text: 'Bağlantı isteği gönderildi. Öğrencinin onaylamasını bekliyoruz.' });
@@ -139,7 +131,6 @@ export default function ParentDashboard() {
 
     return (
         <div className="role-parent flex h-screen bg-gray-50 relative">
-            {/* SOL MENÜ */}
             <div className="app-sidebar">
                 <div className="app-sidebar-logo">
                     <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
@@ -174,7 +165,6 @@ export default function ParentDashboard() {
                 </div>
             </div>
 
-            {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
                 {activeTab === 'home' && (
                     <header className="mb-8">
@@ -189,10 +179,8 @@ export default function ParentDashboard() {
                     </div>
                 ) : (
                     <>
-                        {/* ÖZET EKRANI */}
                         {activeTab === 'home' && (
                             <div className="space-y-8">
-                                {/* BAĞLI ÖĞRENCİLER VE ÖĞRENCİ EKLEME */}
                                 <div className="app-card">
                                     <h2 className="text-lg font-bold mb-4">Bağlı Öğrenciler</h2>
                                     {children.length === 0 ? (
@@ -268,7 +256,6 @@ export default function ParentDashboard() {
                             </div>
                         )}
 
-                        {/* ÖDEVLER */}
                         {activeTab === 'assignments' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Ödev Listesi</h2>
@@ -303,7 +290,6 @@ export default function ParentDashboard() {
                             </div>
                         )}
 
-                        {/* SINAVLAR */}
                         {activeTab === 'exams' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Sınav ve Deneme Notları</h2>
@@ -336,7 +322,6 @@ export default function ParentDashboard() {
                             </div>
                         )}
 
-                        {/* KAYNAKLAR */}
                         {activeTab === 'resources' && (
                             <div className="app-card">
                                 <h2 className="text-xl font-bold mb-6">Öğretmen Tarafından Paylaşılan Materyaller</h2>
@@ -362,7 +347,6 @@ export default function ParentDashboard() {
                             </div>
                         )}
 
-                        {/* EĞİTMEN VİTRİNİ SEKMESİ */}
                         {activeTab === 'marketplace' && (
                             <MarketplacePanel
                                 onMessageTeacher={(teacherUserId) => {
@@ -372,10 +356,8 @@ export default function ParentDashboard() {
                             />
                         )}
 
-                        {/* MESAJLARIM SEKMESİ */}
                         {activeTab === 'messages' && <MessagesPanel initialUserId={messagesInitialUserId} />}
 
-                        {/* TAKVİM SEKMESİ */}
                         {activeTab === 'calendar' && <CalendarPanel />}
                     </>
                 )}

@@ -4,10 +4,11 @@ import api from '../../api/client';
 import { AuthContext } from '../../context/AuthContext';
 import { getRoleColors } from '../../theme/colors';
 import { Card, Badge, PrimaryButton, OutlineButton, EmptyState, SectionTitle } from '../../components/UI';
+import Hero from '../../components/Hero';
 
 export default function StudentHomeScreen() {
     const { user } = useContext(AuthContext);
-    const accent = getRoleColors('STUDENT').accent;
+    const { accent, accentSoft } = getRoleColors('STUDENT');
 
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -61,7 +62,9 @@ export default function StudentHomeScreen() {
     }
 
     const firstName = user?.user?.first_name || user?.first_name || '';
+    const lastName = user?.user?.last_name || user?.last_name || '';
     const pendingFirst = assignments.filter((a) => a.status === 'PENDING');
+    const pendingCount = pendingFirst.length;
 
     return (
         <FlatList
@@ -70,7 +73,7 @@ export default function StudentHomeScreen() {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[accent]} />}
             ListHeaderComponent={
                 <View>
-                    <Text style={styles.greeting}>Merhaba Öğrenci{firstName ? `, ${firstName}` : ''}</Text>
+                    <Hero eyebrow="Merhaba Öğrenci" name={`${firstName} ${lastName}`.trim()} subtitle={`${pendingCount} bekleyen ödev`} accent={accent} accentSoft={accentSoft} />
 
                     {linkRequests.length > 0 && (
                         <View style={{ marginBottom: 20 }}>
@@ -93,7 +96,7 @@ export default function StudentHomeScreen() {
             }
             data={pendingFirst.concat(assignments.filter((a) => a.status !== 'PENDING'))}
             keyExtractor={(item) => String(item.id)}
-            ListEmptyComponent={<EmptyState text="Henüz ödeviniz yok." />}
+            ListEmptyComponent={<EmptyState icon="📚" text="Henüz ödeviniz yok." />}
             renderItem={({ item }) => (
                 <Card>
                     <View style={styles.rowTop}>
@@ -121,7 +124,6 @@ export default function StudentHomeScreen() {
 
 const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    greeting: { fontSize: 20, fontWeight: '800', color: '#1e293b', marginBottom: 18 },
     reqName: { fontWeight: '700', fontSize: 15, color: '#1e293b' },
     reqSub: { fontSize: 12, color: '#64748b', marginBottom: 10 },
     reqActions: { flexDirection: 'row' },

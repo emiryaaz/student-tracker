@@ -21,7 +21,7 @@ export default function AdminDashboard() {
     const [activeFilter, setActiveFilter] = useState('PENDING');
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [notes, setNotes] = useState({}); // { [teacherProfileId]: "red sebebi taslağı" }
+    const [notes, setNotes] = useState({});
     const [actioningId, setActioningId] = useState(null);
 
     const fetchTeachers = () => {
@@ -56,7 +56,6 @@ export default function AdminDashboard() {
 
     return (
         <div className="role-admin flex h-screen bg-gray-100 relative">
-            {/* SOL MENÜ */}
             <div className="app-sidebar">
                 <div className="app-sidebar-logo">
                     <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
@@ -83,7 +82,6 @@ export default function AdminDashboard() {
                 </div>
             </div>
 
-            {/* ANA İÇERİK */}
             <div className="flex-1 overflow-y-auto p-8">
                 <header className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800">Öğretmen Doğrulama</h1>

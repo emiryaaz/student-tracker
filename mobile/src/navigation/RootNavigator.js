@@ -9,6 +9,7 @@ import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import { TeacherTabs, StudentTabs, ParentTabs, AdminTabs } from './RoleTabs';
+import { ink, brand } from '../theme/colors';
 
 const Stack = createNativeStackNavigator();
 
@@ -23,7 +24,6 @@ function AuthStack() {
     );
 }
 
-// Web'deki RoleRouter'ın karşılığı: kullanıcının rolüne göre doğru tab navigator'a yönlendirir.
 function RoleRouter() {
     const { user } = useContext(AuthContext);
     const role = user?.role || user?.user?.role;
@@ -45,8 +45,8 @@ export default function RootNavigator() {
 
     if (loading) {
         return (
-            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                <ActivityIndicator size="large" color="#2563eb" />
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: ink[900] }}>
+                <ActivityIndicator size="large" color={brand.accent} />
             </View>
         );
     }

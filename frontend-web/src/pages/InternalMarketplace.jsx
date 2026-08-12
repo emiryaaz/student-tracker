@@ -3,8 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
-// Kullanıcının rolüne göre ait olduğu dashboard adresini döner (Mesajlarım sekmesine
-// yönlendirmek için kullanılır; roller App.jsx'teki RoleRouter ile birebir aynı)
 const getDashboardPath = (user) => {
     const role = user?.role || user?.user?.role;
     if (role === 'TEACHER') return '/teacher';
@@ -34,7 +32,6 @@ export default function InternalMarketplace() {
 
     return (
         <div className="p-6 md:p-8 w-full max-w-7xl mx-auto bg-gray-50 min-h-screen">
-            {/* Üst Kısım: Başlık ve Geri Butonu */}
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">Eğitmen Vitrini</h1>
@@ -48,7 +45,6 @@ export default function InternalMarketplace() {
                 </button>
             </div>
 
-            {/* İçerik: Yükleniyor veya Kartlar */}
             {loading ? (
                 <div className="flex justify-center items-center h-48">
                     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
@@ -57,8 +53,6 @@ export default function InternalMarketplace() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {teachers.map(teacher => (
                         <div key={teacher.id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col hover:shadow-md transition relative">
-
-                            {/* Profil Resmi & Temel Bilgiler */}
                             <div className="flex items-center gap-4 mb-4">
                                 {teacher.profile_picture ? (
                                     <img src={`http://localhost:8000${teacher.profile_picture}`} alt={teacher.first_name} className="w-16 h-16 rounded-full object-cover border-2 border-gray-100" />
@@ -86,15 +80,12 @@ export default function InternalMarketplace() {
                                 </p>
                             )}
 
-                            {/* Biyografi */}
                             <p className="text-gray-600 text-sm mb-6 flex-1 line-clamp-3">
                                 {teacher.bio || 'Henüz bir açıklama eklenmemiş.'}
                             </p>
 
-                            {/* Aksiyon Alanı: Müsait Durumu ve Mesaj Butonu */}
                             <div className="mt-auto border-t border-gray-100 pt-4 flex flex-wrap gap-3 justify-between items-center">
                                 <div className="flex items-center gap-2 mt-2 sm:mt-0 w-full sm:w-auto justify-end">
-                                    {/* YENİ EKLENEN PROFİLİ İNCELE BUTONU */}
                                     <button
                                         onClick={() => navigate(`/teacher/${teacher.id}`)}
                                         className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-3 py-2 rounded-lg text-sm font-medium transition shadow-sm flex-1 sm:flex-none text-center"
@@ -102,7 +93,6 @@ export default function InternalMarketplace() {
                                         Profili İncele
                                     </button>
 
-                                    {/* MEVCUT MESAJ AT BUTONU */}
                                     <button
                                         onClick={() => navigate(getDashboardPath(user), { state: { openMessagesWith: teacher.user_id } })}
                                         className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 shadow-sm flex-1 sm:flex-none"

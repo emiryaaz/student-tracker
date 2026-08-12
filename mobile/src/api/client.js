@@ -1,14 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ÖNEMLİ: Mobil cihaz/emülatör "localhost" derken kendi üzerini kasteder, bilgisayarınızdaki
-// Django sunucusunu değil. Bu yüzden burada bilgisayarınızın yerel ağ IP adresini kullanmanız
-// gerekiyor (örn. 192.168.1.34). Terminalde `ipconfig` (Windows) ile bulabilirsiniz.
-//   - Android emülatörü kullanıyorsanız: 10.0.2.2 çalışır (emülatörden bilgisayara özel takma ad)
-//   - Gerçek telefon + Expo Go kullanıyorsanız: bilgisayarınızın LAN IP'sini yazmalısınız
-//   - iOS simülatörü (Mac): 'localhost' doğrudan çalışır
 export const API_BASE_URL = 'http://10.0.2.2:8000/api';
-// export const API_BASE_URL = 'http://192.168.1.34:8000/api'; // <- kendi IP'niz için örnek
+// export const API_BASE_URL = 'http://192.168.1.34:8000/api';
 
 const api = axios.create({
     baseURL: API_BASE_URL,
@@ -22,7 +16,6 @@ api.interceptors.request.use(async (config) => {
     return config;
 });
 
-// Access token süresi dolunca (401) refresh token ile otomatik yenile ve isteği tekrar dene
 let isRefreshing = false;
 let refreshQueue = [];
 
@@ -34,7 +27,6 @@ const processQueue = (error, token = null) => {
     refreshQueue = [];
 };
 
-// Oturum süresi dolduğunda dinleyicilere (AuthContext) haber vermek için basit bir event bus
 let onSessionExpired = null;
 export const setOnSessionExpired = (cb) => {
     onSessionExpired = cb;

@@ -1,12 +1,9 @@
 import { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, ScrollView } from 'react-native';
 import api from '../../api/client';
 import { PrimaryButton } from '../../components/UI';
+import { brand, ink } from '../../theme/colors';
 
-// Bu ekrana genelde derin link ile ulaşılır (reset-password/:uid/:token); mobilde deep-link
-// kurulumu ayrı bir iş olduğundan, MVP'de kullanıcı linki web'de açıp e-postadaki uid/token'ı
-// manuel girebilir ya da bu ekran doğrudan bir deep-link handler'dan parametre alacak şekilde
-// route.params üzerinden besleniyor.
 export default function ResetPasswordScreen({ route, navigation }) {
     const initialUid = route?.params?.uid || '';
     const initialToken = route?.params?.token || '';
@@ -46,33 +43,42 @@ export default function ResetPasswordScreen({ route, navigation }) {
     };
 
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.title}>Yeni Şifre Belirle</Text>
+        <View style={styles.root}>
+            <ScrollView contentContainerStyle={styles.scroll}>
+                <Text style={styles.logo}>Edu<Text style={{ color: brand.accent }}>Tracker</Text></Text>
 
-            {success ? (
-                <Text style={styles.success}>Şifreniz güncellendi. Girişe yönlendiriliyorsunuz...</Text>
-            ) : (
-                <View>
-                    {error ? <Text style={styles.error}>{error}</Text> : null}
-                    {!initialUid && (
-                        <>
-                            <TextInput style={styles.input} value={uid} onChangeText={setUid} placeholder="uid (linkteki)" autoCapitalize="none" />
-                            <TextInput style={[styles.input, { marginTop: 10 }]} value={token} onChangeText={setToken} placeholder="token (linkteki)" autoCapitalize="none" />
-                        </>
+                <View style={styles.card}>
+                    <Text style={styles.title}>Yeni Şifre Belirle</Text>
+
+                    {success ? (
+                        <Text style={styles.success}>Şifreniz güncellendi. Girişe yönlendiriliyorsunuz...</Text>
+                    ) : (
+                        <View>
+                            {error ? <Text style={styles.error}>{error}</Text> : null}
+                            {!initialUid && (
+                                <>
+                                    <TextInput style={styles.input} value={uid} onChangeText={setUid} placeholder="uid (linkteki)" placeholderTextColor="#94A3B8" autoCapitalize="none" />
+                                    <TextInput style={[styles.input, { marginTop: 10 }]} value={token} onChangeText={setToken} placeholder="token (linkteki)" placeholderTextColor="#94A3B8" autoCapitalize="none" />
+                                </>
+                            )}
+                            <TextInput style={[styles.input, { marginTop: 10 }]} value={password} onChangeText={setPassword} placeholder="Yeni şifre" placeholderTextColor="#94A3B8" secureTextEntry />
+                            <TextInput style={[styles.input, { marginTop: 10 }]} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Yeni şifre (tekrar)" placeholderTextColor="#94A3B8" secureTextEntry />
+                            <PrimaryButton title="Şifreyi Güncelle" onPress={handleSubmit} loading={loading} color={brand.accent} style={{ marginTop: 14 }} />
+                        </View>
                     )}
-                    <TextInput style={[styles.input, { marginTop: 10 }]} value={password} onChangeText={setPassword} placeholder="Yeni şifre" secureTextEntry />
-                    <TextInput style={[styles.input, { marginTop: 10 }]} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Yeni şifre (tekrar)" secureTextEntry />
-                    <PrimaryButton title="Şifreyi Güncelle" onPress={handleSubmit} loading={loading} color="#2563eb" style={{ marginTop: 14 }} />
                 </View>
-            )}
-        </ScrollView>
+            </ScrollView>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: { flexGrow: 1, justifyContent: 'center', padding: 24, backgroundColor: '#f1f5f9' },
-    title: { fontSize: 22, fontWeight: '800', color: '#2563eb', textAlign: 'center', marginBottom: 16 },
-    error: { color: '#dc2626', textAlign: 'center', marginBottom: 10, fontSize: 13 },
+    root: { flex: 1, backgroundColor: ink[900] },
+    scroll: { flexGrow: 1, justifyContent: 'center', padding: 26 },
+    logo: { fontSize: 22, fontWeight: '800', color: '#fff', textAlign: 'center', marginBottom: 24 },
+    card: { backgroundColor: '#fff', borderRadius: 20, padding: 24 },
+    title: { fontSize: 17, fontWeight: '800', color: ink[900], marginBottom: 14, textAlign: 'center' },
+    error: { color: '#dc2626', textAlign: 'center', marginBottom: 10, fontSize: 12.5 },
     success: { color: '#16a34a', textAlign: 'center', fontSize: 14 },
-    input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
+    input: { backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: ink[900] },
 });

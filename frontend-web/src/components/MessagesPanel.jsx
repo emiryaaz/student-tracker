@@ -2,9 +2,6 @@ import { useState, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../services/api';
 
-// Dashboard'ların içine gömülü, tek sayfa deneyimini bozmayan mesajlaşma paneli.
-// Aksan rengini kapsayan role-teacher/role-student/role-parent wrapper'ından
-// (--role-accent, --role-accent-hover, --role-accent-soft) devralır.
 export default function MessagesPanel({ initialUserId = null }) {
     const { user } = useContext(AuthContext);
     const [chatUserId, setChatUserId] = useState(initialUserId ? String(initialUserId) : null);
@@ -16,7 +13,6 @@ export default function MessagesPanel({ initialUserId = null }) {
     const myId = user?.user?.id || user?.user_id || user?.id;
     const myName = user?.user?.first_name || user?.first_name;
 
-    // Dışarıdan (örn. Eğitmen Vitrini) belirli bir kullanıcıyla sohbet açma isteği gelirse yakala
     useEffect(() => {
         if (initialUserId) setChatUserId(String(initialUserId));
     }, [initialUserId]);
@@ -108,7 +104,6 @@ export default function MessagesPanel({ initialUserId = null }) {
 
     return (
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden flex h-[75vh] min-h-[520px]">
-            {/* SOL PANEL: KİŞİ LİSTESİ */}
             <div className={`w-full md:w-1/3 bg-gray-50 border-r border-gray-100 flex flex-col ${chatUserId ? 'hidden md:flex' : 'flex'}`}>
                 <div className="p-4 border-b border-gray-100">
                     <h2 className="font-bold text-gray-800 text-lg">Mesajlarım</h2>
@@ -139,7 +134,6 @@ export default function MessagesPanel({ initialUserId = null }) {
                 </div>
             </div>
 
-            {/* SAĞ PANEL: SOHBET ALANI */}
             <div className={`w-full md:w-2/3 flex flex-col bg-slate-50 relative ${!chatUserId ? 'hidden md:flex' : 'flex'}`}>
                 {!chatUserId ? (
                     <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">

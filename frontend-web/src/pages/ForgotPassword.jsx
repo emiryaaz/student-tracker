@@ -14,9 +14,6 @@ export default function ForgotPassword() {
         setLoading(true);
         try {
             await api.post('/accounts/password-reset/request/', { email });
-            // Backend her durumda aynı genel cevabı döner (kullanıcı numaralandırmasını
-            // önlemek için), bu yüzden burada e-postanın gerçekten kayıtlı olup olmadığını
-            // ayırt etmiyoruz.
             setSent(true);
         } catch (err) {
             setError('Bir hata oluştu. Lütfen tekrar deneyin.');
