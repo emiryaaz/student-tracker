@@ -14,6 +14,7 @@ import ParentDashboard from './pages/ParentDashboard';
 import TeachersDirectory from './pages/TeachersDirectory';
 import InternalMarketplace from './pages/InternalMarketplace';
 import TeacherProfile from './pages/TeacherProfile';
+import PrivacyPolicy from './pages/PrivacyPolicy';
 
 const RoleRouter = () => {
     const { user, loading } = useContext(AuthContext);
@@ -52,6 +53,7 @@ function App() {
                 <Route path="/teachers" element={<TeachersDirectory />} />
                 <Route path="/marketplace" element={<InternalMarketplace />} />
                 <Route path="/teacher/:id" element={<TeacherProfile />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/dashboard" element={<RoleRouter />} />
 
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />

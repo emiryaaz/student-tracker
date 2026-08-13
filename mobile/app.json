@@ -23,6 +23,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "5be2a410-7693-4e65-bc82-918b03f48983"
+      }
+    },
+    "owner": "emiryaaz"
   }
 }
