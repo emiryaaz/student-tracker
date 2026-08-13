@@ -19,6 +19,13 @@ const STATUS_BADGE_CLASSES = {
 export default function AdminDashboard() {
     const { logout } = useContext(AuthContext);
     const [activeFilter, setActiveFilter] = useState('PENDING');
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => {
+            localStorage.setItem('sidebarCollapsed', String(!prev));
+            return !prev;
+        });
+    };
     const [teachers, setTeachers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notes, setNotes] = useState({});
@@ -56,29 +63,41 @@ export default function AdminDashboard() {
 
     return (
         <div className="role-admin flex h-screen bg-gray-100 relative">
-            <div className="app-sidebar">
+            <div className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}>
                 <div className="app-sidebar-logo">
-                    <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
-                    <p className="app-sidebar-subtitle">Yönetici Paneli</p>
+                    {!sidebarCollapsed && (
+                        <div>
+                            <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
+                            <p className="app-sidebar-subtitle">Yönetici Paneli</p>
+                        </div>
+                    )}
+                    <button onClick={toggleSidebar} className="app-sidebar-toggle" title={sidebarCollapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}>
+                        {sidebarCollapsed ? '›' : '‹'}
+                    </button>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {[
-                        { id: 'PENDING', label: 'İnceleme Bekleyenler' },
-                        { id: 'APPROVED', label: 'Onaylı Öğretmenler' },
-                        { id: 'REJECTED', label: 'Reddedilenler' },
-                        { id: 'ALL', label: 'Tüm Öğretmenler' },
+                        { id: 'PENDING', label: 'İnceleme Bekleyenler', icon: '⏳' },
+                        { id: 'APPROVED', label: 'Onaylı Öğretmenler', icon: '✅' },
+                        { id: 'REJECTED', label: 'Reddedilenler', icon: '⛔' },
+                        { id: 'ALL', label: 'Tüm Öğretmenler', icon: '🗂️' },
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveFilter(tab.id)}
+                            title={tab.label}
                             className={`app-nav-btn ${activeFilter === tab.id ? 'app-nav-btn-active' : ''}`}
                         >
-                            <span>{tab.label}</span>
+                            <span className="app-nav-btn-icon">{tab.icon}</span>
+                            <span className="app-nav-btn-label">{tab.label}</span>
                         </button>
                     ))}
                 </nav>
                 <div className="p-4 border-t border-ink-600">
-                    <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
+                    <button onClick={logout} title="Çıkış Yap" className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">
+                        <span className="app-sidebar-logout-label">Çıkış Yap</span>
+                        {sidebarCollapsed && '⏻'}
+                    </button>
                 </div>
             </div>
 

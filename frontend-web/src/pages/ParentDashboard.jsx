@@ -12,6 +12,13 @@ export default function ParentDashboard() {
 
     const [activeTab, setActiveTab] = useState('home');
     const [messagesInitialUserId, setMessagesInitialUserId] = useState(null);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('sidebarCollapsed') === 'true');
+    const toggleSidebar = () => {
+        setSidebarCollapsed(prev => {
+            localStorage.setItem('sidebarCollapsed', String(!prev));
+            return !prev;
+        });
+    };
 
     const [assignments, setAssignments] = useState([]);
     const [exams, setExams] = useState([]);
@@ -131,27 +138,36 @@ export default function ParentDashboard() {
 
     return (
         <div className="role-parent flex h-screen bg-gray-50 relative">
-            <div className="app-sidebar">
+            <div className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}>
                 <div className="app-sidebar-logo">
-                    <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
-                    <p className="app-sidebar-subtitle">Veli Paneli</p>
+                    {!sidebarCollapsed && (
+                        <div>
+                            <span className="app-sidebar-logo-text">Edu<span className="app-sidebar-logo-accent">Tracker</span></span>
+                            <p className="app-sidebar-subtitle">Veli Paneli</p>
+                        </div>
+                    )}
+                    <button onClick={toggleSidebar} className="app-sidebar-toggle" title={sidebarCollapsed ? 'Menüyü genişlet' : 'Menüyü daralt'}>
+                        {sidebarCollapsed ? '›' : '‹'}
+                    </button>
                 </div>
                 <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
                     {[
-                        { id: 'home', label: 'Genel Durum' },
-                        { id: 'assignments', label: 'Çocuğumun Ödevleri' },
-                        { id: 'exams', label: 'Sınav Notları' },
-                        { id: 'resources', label: 'Ders Materyalleri' },
-                        { id: 'marketplace', label: 'Eğitmen Vitrini' },
-                        { id: 'messages', label: 'Mesajlarım' },
-                        { id: 'calendar', label: 'Takvim' }
+                        { id: 'home', label: 'Genel Durum', icon: '🏠' },
+                        { id: 'assignments', label: 'Çocuğumun Ödevleri', icon: '📝' },
+                        { id: 'exams', label: 'Sınav Notları', icon: '📊' },
+                        { id: 'resources', label: 'Ders Materyalleri', icon: '📚' },
+                        { id: 'marketplace', label: 'Eğitmen Vitrini', icon: '🎓' },
+                        { id: 'messages', label: 'Mesajlarım', icon: '💬' },
+                        { id: 'calendar', label: 'Takvim', icon: '📅' }
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
+                            title={tab.label}
                             className={`app-nav-btn ${activeTab === tab.id ? 'app-nav-btn-active' : ''}`}
                         >
-                            <span>{tab.label}</span>
+                            <span className="app-nav-btn-icon">{tab.icon}</span>
+                            <span className="app-nav-btn-label">{tab.label}</span>
                             {tab.id === 'messages' && unreadCount > 0 && (
                                 <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full animate-bounce">
                                     {unreadCount}
@@ -161,7 +177,10 @@ export default function ParentDashboard() {
                     ))}
                 </nav>
                 <div className="p-4 border-t border-ink-600">
-                    <button onClick={logout} className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">Çıkış Yap</button>
+                    <button onClick={logout} title="Çıkış Yap" className="w-full bg-red-500 hover:bg-red-600 px-4 py-2 rounded font-bold shadow">
+                        <span className="app-sidebar-logout-label">Çıkış Yap</span>
+                        {sidebarCollapsed && '⏻'}
+                    </button>
                 </div>
             </div>
 
