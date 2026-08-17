@@ -61,6 +61,21 @@ export default function AdminDashboard() {
         }
     };
 
+    const toggleSubscriptionExempt = async (teacherProfileId, nextValue) => {
+        setActioningId(teacherProfileId);
+        try {
+            await api.patch(`/accounts/admin/teacher-verifications/${teacherProfileId}/subscription-override/`, {
+                subscription_exempt: nextValue,
+            });
+            fetchTeachers();
+        } catch (error) {
+            console.error('İşlem başarısız:', error);
+            alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+        } finally {
+            setActioningId(null);
+        }
+    };
+
     return (
         <div className="role-admin flex h-screen bg-gray-100 relative">
             <div className={`app-sidebar ${sidebarCollapsed ? 'app-sidebar-collapsed' : ''}`}>
@@ -126,6 +141,19 @@ export default function AdminDashboard() {
                                             <span className={`text-xs font-bold px-2 py-1 rounded-full ${STATUS_BADGE_CLASSES[teacher.verification_status]}`}>
                                                 {STATUS_LABELS[teacher.verification_status] || teacher.verification_status}
                                             </span>
+                                            {teacher.is_subscribed ? (
+                                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-teal-50 text-teal-700 border border-teal-200">
+                                                    ✓ Abone (ödemeli)
+                                                </span>
+                                            ) : teacher.subscription_exempt ? (
+                                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                                    ✓ Ücretsiz Erişim (admin)
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-gray-100 text-gray-500">
+                                                    Abone Değil
+                                                </span>
+                                            )}
                                         </div>
                                         <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
                                         {teacher.title && <p className="text-sm text-gray-600 mt-1">{teacher.title}</p>}
@@ -173,6 +201,18 @@ export default function AdminDashboard() {
                                                 Reddet
                                             </button>
                                         </div>
+                                        <button
+                                            onClick={() => toggleSubscriptionExempt(teacher.id, !teacher.subscription_exempt)}
+                                            disabled={actioningId === teacher.id || teacher.is_subscribed}
+                                            title={teacher.is_subscribed ? 'Öğretmen zaten ödemeli abone' : ''}
+                                            className={`w-full mt-2 text-sm font-bold py-2 rounded-lg transition disabled:opacity-50 ${
+                                                teacher.subscription_exempt
+                                                    ? 'bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-200'
+                                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200'
+                                            }`}
+                                        >
+                                            {teacher.subscription_exempt ? 'Ücretsiz Erişimi Kaldır' : 'Ödemesiz Ücretsiz Erişim Ver'}
+                                        </button>
                                     </div>
                                 </div>
                             </div>

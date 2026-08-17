@@ -37,6 +37,16 @@ class TeacherProfile(models.Model):
     verification_status = models.CharField(max_length=15, choices=VERIFICATION_STATUS_CHOICES, default='NOT_SUBMITTED', verbose_name="Doğrulama Durumu")
     verification_note = models.TextField(blank=True, null=True, verbose_name="Admin Notu (örn. red sebebi)")
 
+    revenuecat_app_user_id = models.CharField(max_length=255, blank=True, null=True, unique=True, verbose_name="RevenueCat Kullanıcı ID")
+    is_subscribed = models.BooleanField(default=False, verbose_name="Aktif Abonelik")
+    subscription_expires_at = models.DateTimeField(blank=True, null=True, verbose_name="Abonelik Bitiş Tarihi")
+    subscription_platform = models.CharField(max_length=20, blank=True, null=True, verbose_name="Abonelik Platformu (stripe/app_store/play_store)")
+    subscription_exempt = models.BooleanField(default=False, verbose_name="Admin Tarafından Ücretsiz Erişim Verildi")
+
+    @property
+    def has_active_access(self):
+        return self.is_subscribed or self.subscription_exempt
+
     def __str__(self):
         return f"Öğretmen: {self.user.first_name} {self.user.last_name}"
 

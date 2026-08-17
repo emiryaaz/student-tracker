@@ -28,8 +28,10 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
         model = TeacherProfile
         fields = ('id', 'user_id', 'first_name', 'last_name', 'email', 'role', 'title', 'bio', 'hourly_rate',
                    'profile_picture', 'is_verified', 'average_rating', 'review_count',
-                   'diploma_document', 'verification_status', 'verification_note')
-        read_only_fields = ('is_verified', 'verification_status', 'verification_note')
+                   'diploma_document', 'verification_status', 'verification_note',
+                   'is_subscribed', 'subscription_expires_at', 'subscription_exempt')
+        read_only_fields = ('is_verified', 'verification_status', 'verification_note',
+                             'is_subscribed', 'subscription_expires_at', 'subscription_exempt')
 
 class ChildSummarySerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)

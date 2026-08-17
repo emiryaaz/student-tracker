@@ -132,6 +132,10 @@ class MatchRequestListCreateView(generics.ListCreateAPIView):
 
         teacher = serializer.validated_data.get('teacher')
 
+        teacher_profile = TeacherProfile.objects.filter(user=teacher).first()
+        if not teacher_profile or not teacher_profile.has_active_access:
+            raise ValidationError("Bu öğretmen şu anda yeni öğrenci kabul etmiyor.")
+
         existing = MatchRequest.objects.filter(student=target_student, teacher=teacher)
         if existing.filter(status='ACCEPTED').exists():
             raise ValidationError("Bu öğrenci zaten bu öğretmenden ders alıyor, tekrar talep gönderilemez.")
@@ -149,11 +153,15 @@ class MatchRequestRespondView(APIView):
 
         new_status = request.data.get('status')
         if new_status in ['ACCEPTED', 'REJECTED']:
+            if new_status == 'ACCEPTED':
+                teacher_profile, _ = TeacherProfile.objects.get_or_create(user=match_request.teacher)
+                if not teacher_profile.has_active_access:
+                    return Response({"error": "Yeni öğrenci kabul edebilmek için aktif bir aboneliğiniz olmalı."}, status=status.HTTP_403_FORBIDDEN)
+
             match_request.status = new_status
             match_request.save()
 
             if new_status == 'ACCEPTED':
-                teacher_profile, _ = TeacherProfile.objects.get_or_create(user=match_request.teacher)
                 student_profile, _ = StudentProfile.objects.get_or_create(user=match_request.student)
                 TutoringRelation.objects.get_or_create(
                     tutor=teacher_profile,

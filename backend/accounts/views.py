@@ -8,6 +8,7 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Q
 
 from .models import User, TeacherProfile, StudentProfile, ParentProfile, ParentLinkRequest
 from .serializers import (
@@ -15,6 +16,103 @@ from .serializers import (
     StudentProfileSerializer, ParentProfileSerializer,
     RegisterSerializer, ParentLinkRequestSerializer
 )
+
+
+ACTIVE_SUBSCRIPTION_EVENTS = {'INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE'}
+INACTIVE_SUBSCRIPTION_EVENTS = {'EXPIRATION'}
+
+STORE_TO_PLATFORM = {
+    'APP_STORE': 'app_store',
+    'MAC_APP_STORE': 'app_store',
+    'PLAY_STORE': 'play_store',
+    'STRIPE': 'stripe',
+    'RC_BILLING': 'stripe',
+}
+
+
+class RevenueCatWebhookView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        auth_header = request.headers.get('Authorization', '')
+        expected = f"Bearer {settings.REVENUECAT_WEBHOOK_SECRET}"
+        if not settings.REVENUECAT_WEBHOOK_SECRET or auth_header != expected:
+            return Response({"error": "Yetkisiz istek."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        event = request.data.get('event', {})
+        event_type = event.get('type')
+        app_user_id = event.get('app_user_id')
+
+        if not app_user_id or not app_user_id.isdigit():
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+        try:
+            profile = TeacherProfile.objects.get(user_id=int(app_user_id))
+        except TeacherProfile.DoesNotExist:
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+        profile.revenuecat_app_user_id = app_user_id
+        store = event.get('store')
+        if store:
+            profile.subscription_platform = STORE_TO_PLATFORM.get(store, store.lower())
+
+        expiration_ms = event.get('expiration_at_ms')
+        if expiration_ms:
+            from datetime import datetime, timezone as dt_timezone
+            profile.subscription_expires_at = datetime.fromtimestamp(expiration_ms / 1000, tz=dt_timezone.utc)
+
+        if event_type in ACTIVE_SUBSCRIPTION_EVENTS:
+            profile.is_subscribed = True
+        elif event_type in INACTIVE_SUBSCRIPTION_EVENTS:
+            profile.is_subscribed = False
+
+        profile.save(update_fields=['revenuecat_app_user_id', 'subscription_platform', 'subscription_expires_at', 'is_subscribed'])
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
+
+
+LEMONSQUEEZY_ACTIVE_STATUSES = {'active', 'on_trial'}
+
+
+class LemonSqueezyWebhookView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        import hmac
+        import hashlib
+
+        signature = request.headers.get('X-Signature', '')
+        secret = settings.LEMONSQUEEZY_WEBHOOK_SECRET
+        if not secret:
+            return Response({"error": "Yapılandırılmamış."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        digest = hmac.new(secret.encode(), request.body, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(digest, signature):
+            return Response({"error": "Geçersiz imza."}, status=status.HTTP_401_UNAUTHORIZED)
+
+        payload = request.data
+        user_id = payload.get('meta', {}).get('custom_data', {}).get('user_id')
+        if not user_id:
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+        try:
+            profile = TeacherProfile.objects.get(user_id=int(user_id))
+        except (TeacherProfile.DoesNotExist, ValueError, TypeError):
+            return Response({"status": "ignored"}, status=status.HTTP_200_OK)
+
+        attributes = payload.get('data', {}).get('attributes', {})
+        sub_status = attributes.get('status')
+        ends_at = attributes.get('renews_at') or attributes.get('ends_at')
+
+        profile.subscription_platform = 'lemonsqueezy'
+        profile.is_subscribed = sub_status in LEMONSQUEEZY_ACTIVE_STATUSES
+        if ends_at:
+            from django.utils.dateparse import parse_datetime
+            parsed = parse_datetime(ends_at)
+            if parsed:
+                profile.subscription_expires_at = parsed
+
+        profile.save(update_fields=['subscription_platform', 'is_subscribed', 'subscription_expires_at'])
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
 
 class IsAdmin(permissions.BasePermission):
@@ -127,9 +225,14 @@ class ProfileViewSet(viewsets.ViewSet):
         return Response(ParentProfileSerializer(parent_profile).data, status=status.HTTP_200_OK)
 
 class TeacherListView(generics.ListAPIView):
-    queryset = TeacherProfile.objects.select_related('user').all()
     serializer_class = TeacherProfileSerializer
     permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        return TeacherProfile.objects.select_related('user').filter(
+            Q(is_subscribed=True) | Q(subscription_exempt=True),
+            is_verified=True,
+        )
 
 class TeacherDetailView(generics.RetrieveAPIView):
     queryset = TeacherProfile.objects.all()
@@ -182,6 +285,27 @@ class TeacherVerificationReviewView(generics.GenericAPIView):
         profile.is_verified = (new_status == 'APPROVED')
         profile.verification_note = request.data.get('note', '')
         profile.save(update_fields=['verification_status', 'is_verified', 'verification_note'])
+
+        return Response(TeacherProfileSerializer(profile).data)
+
+
+class TeacherSubscriptionOverrideView(generics.GenericAPIView):
+    serializer_class = TeacherProfileSerializer
+    permission_classes = [IsAdmin]
+    queryset = TeacherProfile.objects.all()
+
+    def patch(self, request, pk):
+        try:
+            profile = TeacherProfile.objects.get(pk=pk)
+        except TeacherProfile.DoesNotExist:
+            return Response({"detail": "Öğretmen profili bulunamadı."}, status=status.HTTP_404_NOT_FOUND)
+
+        exempt = request.data.get('subscription_exempt')
+        if not isinstance(exempt, bool):
+            return Response({"detail": "'subscription_exempt' alanı true/false olmalı."}, status=status.HTTP_400_BAD_REQUEST)
+
+        profile.subscription_exempt = exempt
+        profile.save(update_fields=['subscription_exempt'])
 
         return Response(TeacherProfileSerializer(profile).data)
 
