@@ -1,6 +1,7 @@
 import { createContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api, { setOnSessionExpired } from '../api/client';
+import { configurePurchases, logOutPurchases } from '../services/purchases';
 
 export const AuthContext = createContext();
 
@@ -12,6 +13,7 @@ export const AuthProvider = ({ children }) => {
         await AsyncStorage.multiRemove(['access', 'refresh']);
         delete api.defaults.headers.common['Authorization'];
         setUser(null);
+        await logOutPurchases();
     }, []);
 
     useEffect(() => {
@@ -28,6 +30,7 @@ export const AuthProvider = ({ children }) => {
                     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
                     const response = await api.get('/accounts/profiles/me/');
                     setUser(response.data);
+                    identifyForPurchases(response.data);
                 } catch (error) {
                     console.log('Oturum süresi dolmuş veya geçersiz token.');
                     await logout();
@@ -38,6 +41,14 @@ export const AuthProvider = ({ children }) => {
         fetchUser();
     }, [logout]);
 
+    const identifyForPurchases = (userData) => {
+        const role = userData?.role || userData?.user?.role;
+        const uid = userData?.user_id || userData?.user?.id || userData?.id;
+        if (role === 'TEACHER' && uid) {
+            configurePurchases(String(uid));
+        }
+    };
+
     const login = async (userData, accessToken, refreshToken) => {
         await AsyncStorage.setItem('access', accessToken);
         if (refreshToken) {
@@ -45,6 +56,7 @@ export const AuthProvider = ({ children }) => {
         }
         api.defaults.headers.common['Authorization'] = `Bearer ${accessToken}`;
         setUser(userData);
+        identifyForPurchases(userData);
     };
 
     const refreshUser = async () => {
