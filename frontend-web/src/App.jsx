@@ -15,6 +15,7 @@ import TeachersDirectory from './pages/TeachersDirectory';
 import InternalMarketplace from './pages/InternalMarketplace';
 import TeacherProfile from './pages/TeacherProfile';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import AccountDeletion from './pages/AccountDeletion';
 
 const RoleRouter = () => {
     const { user, loading } = useContext(AuthContext);
@@ -54,6 +55,7 @@ function App() {
                 <Route path="/marketplace" element={<InternalMarketplace />} />
                 <Route path="/teacher/:id" element={<TeacherProfile />} />
                 <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/account-deletion" element={<AccountDeletion />} />
                 <Route path="/dashboard" element={<RoleRouter />} />
 
                 <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
