@@ -21,3 +21,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Proje dosyalarını kopyalıyoruz
 COPY . /app/
+
+CMD python manage.py migrate && python manage.py collectstatic --noinput --clear && gunicorn core.wsgi:application --bind 0.0.0.0:$PORT
