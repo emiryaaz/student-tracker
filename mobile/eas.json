@@ -15,16 +15,16 @@
       "distribution": "internal",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://edutracker-backend.onrender.com/api",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": ""
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "pending_setup",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "pending_setup"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://edutracker-backend.onrender.com/api",
-        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "",
-        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": ""
+        "EXPO_PUBLIC_REVENUECAT_ANDROID_KEY": "pending_setup",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "pending_setup"
       }
     }
   },

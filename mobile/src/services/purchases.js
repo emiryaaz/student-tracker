@@ -1,8 +1,11 @@
 import { Platform } from 'react-native';
 import Purchases from 'react-native-purchases';
 
-const ANDROID_KEY = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
-const IOS_KEY = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '';
+const PLACEHOLDER = 'pending_setup';
+const rawAndroidKey = process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY || '';
+const rawIosKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY || '';
+const ANDROID_KEY = rawAndroidKey === PLACEHOLDER ? '' : rawAndroidKey;
+const IOS_KEY = rawIosKey === PLACEHOLDER ? '' : rawIosKey;
 
 export const TEACHER_ENTITLEMENT_ID = 'teacher_access';
 
