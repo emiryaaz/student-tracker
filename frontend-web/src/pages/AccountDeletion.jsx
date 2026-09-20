@@ -10,8 +10,8 @@ export default function AccountDeletion() {
                         <h2 className="text-lg font-bold text-gray-900 mb-2">Hesabınızı Nasıl Sildirebilirsiniz</h2>
                         <p>
                             EduTracker hesabınızın ve hesabınızla ilişkili tüm verilerin silinmesini talep etmek için{' '}
-                            <a href="mailto:emiryagiz3561@gmail.com?subject=Hesap%20Silme%20Talebi" className="text-teal-600 hover:underline">
-                                emiryagiz3561@gmail.com
+                            <a href="mailto:ygztechnology@gmail.com?subject=Hesap%20Silme%20Talebi" className="text-teal-600 hover:underline">
+                                ygztechnology@gmail.com
                             </a>{' '}
                             adresine, kayıtlı olduğunuz e-posta adresini ve hesap türünüzü (öğretmen, öğrenci veya veli) belirten bir e-posta gönderin.
                         </p>
@@ -44,8 +44,8 @@ export default function AccountDeletion() {
                         <h2 className="text-lg font-bold text-gray-900 mb-2">İletişim</h2>
                         <p>
                             Sorularınız için{' '}
-                            <a href="mailto:emiryagiz3561@gmail.com" className="text-teal-600 hover:underline">
-                                emiryagiz3561@gmail.com
+                            <a href="mailto:ygztechnology@gmail.com" className="text-teal-600 hover:underline">
+                                ygztechnology@gmail.com
                             </a>{' '}
                             adresinden bize ulaşabilirsiniz.
                         </p>

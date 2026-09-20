@@ -36,7 +36,7 @@ export default function PrivacyPolicy() {
 
                     <section>
                         <h2 className="text-lg font-bold text-gray-900 mb-2">5. Veri Saklama ve Silme</h2>
-                        <p>Verileriniz, hesabınız aktif olduğu sürece saklanır. Hesabınızın ve ilişkili tüm verilerinizin silinmesini talep etmek için <a href="mailto:emiryagiz3561@gmail.com" className="text-teal-600 hover:underline">emiryagiz3561@gmail.com</a> adresinden bizimle iletişime geçebilirsiniz. Talebiniz makul bir süre içinde işleme alınır.</p>
+                        <p>Verileriniz, hesabınız aktif olduğu sürece saklanır. Hesabınızın ve ilişkili tüm verilerinizin silinmesini talep etmek için <a href="mailto:ygztechnology@gmail.com" className="text-teal-600 hover:underline">ygztechnology@gmail.com</a> adresinden bizimle iletişime geçebilirsiniz. Talebiniz makul bir süre içinde işleme alınır.</p>
                     </section>
 
                     <section>
